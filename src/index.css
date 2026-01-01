@@ -6,12 +6,12 @@
  * TWEAK: Modify colors and fonts here for custom styling
  */
 
+/* Import Google Font for child-friendly typography */
+@import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Import Google Font for child-friendly typography */
-@import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap');
 
 @layer base {
   /* Set default font family */

@@ -17,7 +17,7 @@ import {
   Token,
 } from './logic/types';
 import { generatePuzzle, getHint, countEmptyCircles } from './logic/pyramids';
-import { isValueCorrect, isPyramidSolved } from './logic/validation';
+import { isValueCorrect } from './logic/validation';
 import { calculateResult, updateProgress, saveLastLevel } from './logic/progress';
 import { progressStorage } from './logic/storage';
 

@@ -137,7 +137,6 @@ const CircleCell: React.FC<CircleProps> = ({
  */
 const PyramidView: React.FC<PyramidViewProps> = ({
   pyramid,
-  levelId,
   selectedTokenValue,
   onCircleClick,
   onDrop,
