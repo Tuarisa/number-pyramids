@@ -43,7 +43,7 @@ export default {
       // Custom fonts
       // TWEAK: Change font family for different look
       fontFamily: {
-        game: ['Comic Neue', 'Comic Sans MS', 'cursive', 'sans-serif'],
+        game: ['Nunito', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
       },
       // Custom animations
       animation: {

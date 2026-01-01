@@ -7,7 +7,7 @@
  */
 
 /* Import Google Font for child-friendly typography */
-@import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -16,7 +16,7 @@
 @layer base {
   /* Set default font family */
   html {
-    font-family: 'Comic Neue', 'Comic Sans MS', cursive, sans-serif;
+    font-family: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
 
   /* Prevent text selection during drag operations */
