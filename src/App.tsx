@@ -139,12 +139,12 @@ const App: React.FC = () => {
       if (circle && circle.isEmpty) {
         // Temporarily set the token as selected and trigger placement
         const isLevel1 = puzzle.levelId === 1;
-        const originalEmptyCount = puzzle.pyramid.rows[0].filter(c => c.isEmpty).length;
-        const shouldDefer = isLevel1 && originalEmptyCount >= 2;
 
-        if (shouldDefer) {
+        if (isLevel1) {
+          // Level 1: ALWAYS use equation-based validation (left + middle = right)
           handleLevel1Placement(target.col, draggedToken.value, draggedToken.id);
         } else {
+          // Level 2, 3: validate per-cell
           handleImmediatePlacement(target.row, target.col, draggedToken.value);
         }
       }
@@ -163,16 +163,14 @@ const App: React.FC = () => {
     const circle = puzzle.pyramid.rows[row]?.[col];
     if (!circle || !circle.isEmpty) return;
 
-    // For Level 1 with multiple empty cells: defer validation
+    // For Level 1: ALWAYS use equation-based validation
     const isLevel1 = puzzle.levelId === 1;
-    const originalEmptyCount = puzzle.pyramid.rows[0].filter(c => c.isEmpty).length;
-    const shouldDefer = isLevel1 && originalEmptyCount >= 2;
 
-    if (shouldDefer) {
-      // Level 1 deferred validation: place without checking, validate when all filled
+    if (isLevel1) {
+      // Level 1: validate equation (left + middle = right)
       handleLevel1Placement(col, token.value, token.id);
     } else {
-      // Level 2, 3 or Level 1 with single empty: validate immediately
+      // Level 2, 3: validate per-cell
       handleImmediatePlacement(row, col, token.value);
     }
 
