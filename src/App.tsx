@@ -375,10 +375,15 @@ const App: React.FC = () => {
         ),
       };
 
-      // Mark token as used
-      updatedPuzzle.tokens = puzzle.tokens.map((t) =>
-        t.value === value && !t.isUsed ? { ...t, isUsed: true } : t
-      );
+      // Mark only ONE token as used (first unused matching token)
+      let tokenMarked = false;
+      updatedPuzzle.tokens = puzzle.tokens.map((t) => {
+        if (!tokenMarked && t.value === value && !t.isUsed) {
+          tokenMarked = true;
+          return { ...t, isUsed: true };
+        }
+        return t;
+      });
 
       setPuzzle(updatedPuzzle);
 
@@ -493,10 +498,15 @@ const App: React.FC = () => {
       ),
     };
 
-    // Mark matching token as used
-    updatedPuzzle.tokens = puzzle.tokens.map((t) =>
-      t.value === hint.value && !t.isUsed ? { ...t, isUsed: true } : t
-    );
+    // Mark only ONE matching token as used
+    let tokenMarked = false;
+    updatedPuzzle.tokens = puzzle.tokens.map((t) => {
+      if (!tokenMarked && t.value === hint.value && !t.isUsed) {
+        tokenMarked = true;
+        return { ...t, isUsed: true };
+      }
+      return t;
+    });
 
     setPuzzle(updatedPuzzle);
     showToast('Подсказка использована!', 'info');

@@ -100,8 +100,8 @@ export const LEVEL_CONFIGS: Record<LevelId, LevelConfig> = {
   2: {
     id: 2,
     name: 'Уровень 2: Маленькие пирамиды',
-    description: 'Пирамиды из 3 рядов, числа от 1 до 20',
-    minNumber: 1,
+    description: 'Пирамиды из 3 рядов, числа от 0 до 20',
+    minNumber: 0,
     maxNumber: 20,
     numRows: 3,
     minEmpty: 2,
@@ -112,8 +112,8 @@ export const LEVEL_CONFIGS: Record<LevelId, LevelConfig> = {
   3: {
     id: 3,
     name: 'Уровень 3: Большие пирамиды',
-    description: 'Пирамиды из 4 рядов, числа от 1 до 20',
-    minNumber: 1,
+    description: 'Пирамиды из 4 рядов, числа от 0 до 20',
+    minNumber: 0,
     maxNumber: 20,
     numRows: 4,
     minEmpty: 3,
