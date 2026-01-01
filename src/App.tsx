@@ -25,13 +25,14 @@ import { progressStorage } from './logic/storage';
 import LevelSelector from './components/LevelSelector';
 import ProgressPanel from './components/ProgressPanel';
 import AchievementsModal from './components/AchievementsModal';
-import PyramidView from './components/PyramidView';
+import PyramidView, { getDropTargetAtPosition } from './components/PyramidView';
 import TokenBank from './components/TokenBank';
 import Controls from './components/Controls';
 import Header from './components/Header';
 import ResultModal from './components/ResultModal';
 import Toast, { ToastType } from './components/Toast';
 import InstallPrompt from './components/InstallPrompt';
+import DragOverlay from './components/DragOverlay';
 
 type Screen = 'main' | 'game';
 
@@ -63,6 +64,9 @@ const App: React.FC = () => {
   // Map of col -> { value, tokenId }
   const [placedValues, setPlacedValues] = useState<Map<number, { value: number; tokenId: string }>>(new Map());
   const [toast, setToast] = useState<ToastState | null>(null);
+
+  // Drag state
+  const [draggedToken, setDraggedToken] = useState<Token | null>(null);
 
   // Reload progress when coming back to main screen
   useEffect(() => {
@@ -107,6 +111,47 @@ const App: React.FC = () => {
     if (token.isUsed) return;
     setSelectedTokenId((prev) => (prev === token.id ? null : token.id));
   }, []);
+
+  // Handle drag start
+  const handleDragStart = useCallback((token: Token) => {
+    setDraggedToken(token);
+    setSelectedTokenId(null); // Clear tap selection when starting drag
+  }, []);
+
+  // Handle drag end (cancel)
+  const handleDragEnd = useCallback(() => {
+    setDraggedToken(null);
+  }, []);
+
+  // Handle drop
+  const handleDrop = useCallback((x: number, y: number) => {
+    if (!puzzle || !draggedToken) {
+      setDraggedToken(null);
+      return;
+    }
+
+    // Find drop target at position
+    const target = getDropTargetAtPosition(x, y);
+
+    if (target) {
+      // Simulate a circle click with the dragged token
+      const circle = puzzle.pyramid.rows[target.row]?.[target.col];
+      if (circle && circle.isEmpty) {
+        // Temporarily set the token as selected and trigger placement
+        const isLevel1 = puzzle.levelId === 1;
+        const originalEmptyCount = puzzle.pyramid.rows[0].filter(c => c.isEmpty).length;
+        const shouldDefer = isLevel1 && originalEmptyCount >= 2;
+
+        if (shouldDefer) {
+          handleLevel1Placement(target.col, draggedToken.value, draggedToken.id);
+        } else {
+          handleImmediatePlacement(target.row, target.col, draggedToken.value);
+        }
+      }
+    }
+
+    setDraggedToken(null);
+  }, [puzzle, draggedToken]);
 
   // Handle circle click (for tap-to-place mode)
   const handleCircleClick = useCallback((row: number, col: number) => {
@@ -505,6 +550,7 @@ const App: React.FC = () => {
     const currentStreak = progress.levelStats[puzzle.levelId].currentStreak;
     const canUseHint = countEmptyCircles(puzzle.pyramid) > 0;
     const selectedToken = puzzle.tokens.find((t) => t.id === selectedTokenId);
+    const isDragging = draggedToken !== null;
 
     return (
       <div className="min-h-screen bg-gradient-to-b from-game-bg to-orange-100 flex flex-col">
@@ -522,7 +568,8 @@ const App: React.FC = () => {
           <div className="w-full max-w-md">
             <PyramidView
               pyramid={puzzle.pyramid}
-              selectedTokenValue={selectedToken?.value ?? null}
+              selectedTokenValue={selectedToken?.value ?? draggedToken?.value ?? null}
+              isDragging={isDragging}
               onCircleClick={handleCircleClick}
             />
           </div>
@@ -533,6 +580,9 @@ const App: React.FC = () => {
               tokens={puzzle.tokens}
               selectedTokenId={selectedTokenId}
               onTokenSelect={handleTokenSelect}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+              isDragging={isDragging}
             />
           </div>
 
@@ -546,6 +596,13 @@ const App: React.FC = () => {
             />
           </div>
         </div>
+
+        {/* Drag overlay */}
+        <DragOverlay
+          value={draggedToken?.value ?? null}
+          onDrop={handleDrop}
+          onCancel={handleDragEnd}
+        />
       </div>
     );
   };

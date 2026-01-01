@@ -2,18 +2,45 @@
  * PyramidView Component
  *
  * Renders the pyramid structure (lines or triangles).
- * Optimized for touch devices and children:
- * - Large touch targets
- * - Clear visual feedback
- * - Obvious empty/filled states
+ * Supports:
+ * - Tap to place (when token selected)
+ * - Drop target detection for drag-and-drop
+ * - Visual feedback for drag-over state
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef, useEffect } from 'react';
 import { Pyramid, Circle } from '../logic/types';
+
+// Global registry of drop targets for hit testing
+export interface DropTarget {
+  row: number;
+  col: number;
+  element: HTMLElement;
+}
+
+let dropTargets: DropTarget[] = [];
+
+export function getDropTargetAtPosition(x: number, y: number): DropTarget | null {
+  for (const target of dropTargets) {
+    const rect = target.element.getBoundingClientRect();
+    // Add some padding for easier dropping
+    const padding = 10;
+    if (
+      x >= rect.left - padding &&
+      x <= rect.right + padding &&
+      y >= rect.top - padding &&
+      y <= rect.bottom + padding
+    ) {
+      return target;
+    }
+  }
+  return null;
+}
 
 interface PyramidViewProps {
   pyramid: Pyramid;
   selectedTokenValue: number | null;
+  isDragging: boolean;
   onCircleClick: (row: number, col: number) => void;
 }
 
@@ -22,6 +49,7 @@ interface CircleProps {
   row: number;
   col: number;
   hasSelectedToken: boolean;
+  isDragging: boolean;
   onCircleClick: (row: number, col: number) => void;
 }
 
@@ -33,8 +61,29 @@ const CircleCell: React.FC<CircleProps> = ({
   row,
   col,
   hasSelectedToken,
+  isDragging,
   onCircleClick,
 }) => {
+  const elementRef = useRef<HTMLButtonElement>(null);
+
+  // Register as drop target if empty
+  useEffect(() => {
+    if (circle.isEmpty && elementRef.current) {
+      const target: DropTarget = {
+        row,
+        col,
+        element: elementRef.current,
+      };
+      dropTargets.push(target);
+
+      return () => {
+        dropTargets = dropTargets.filter(
+          (t) => !(t.row === row && t.col === col)
+        );
+      };
+    }
+  }, [circle.isEmpty, row, col]);
+
   const handleTap = useCallback(() => {
     if (circle.isEmpty) {
       onCircleClick(row, col);
@@ -49,13 +98,20 @@ const CircleCell: React.FC<CircleProps> = ({
     text-2xl sm:text-3xl md:text-4xl font-extrabold
     transition-all duration-200
     select-none
-    touch-manipulation
   `;
 
   if (circle.isEmpty) {
     // Empty circle - awaiting input
-    if (hasSelectedToken) {
-      // Ready to receive - highlight strongly
+    if (isDragging) {
+      // Highlight as drop target during drag
+      baseClasses += `
+        bg-amber-100
+        border-4 border-dashed border-amber-500
+        shadow-lg shadow-amber-200
+        scale-105
+      `;
+    } else if (hasSelectedToken) {
+      // Ready to receive tap
       baseClasses += `
         bg-green-100
         border-4 border-dashed border-green-500
@@ -90,17 +146,20 @@ const CircleCell: React.FC<CircleProps> = ({
 
   return (
     <button
+      ref={elementRef}
       type="button"
       className={baseClasses}
       onClick={handleTap}
       disabled={!circle.isEmpty}
+      data-row={row}
+      data-col={col}
       aria-label={circle.isEmpty ? 'Пустая ячейка - нажми чтобы поставить число' : `Число ${circle.value}`}
     >
       {!circle.isEmpty && (
         <span className="text-primary-800">{circle.value}</span>
       )}
       {circle.isEmpty && !circle.isAnimating && (
-        <span className={`text-4xl ${hasSelectedToken ? 'text-green-500' : 'text-primary-200'}`}>
+        <span className={`text-4xl ${isDragging ? 'text-amber-500' : hasSelectedToken ? 'text-green-500' : 'text-primary-200'}`}>
           ?
         </span>
       )}
@@ -114,6 +173,7 @@ const CircleCell: React.FC<CircleProps> = ({
 const PyramidView: React.FC<PyramidViewProps> = ({
   pyramid,
   selectedTokenValue,
+  isDragging,
   onCircleClick,
 }) => {
   const numRows = pyramid.rows.length;
@@ -138,6 +198,7 @@ const PyramidView: React.FC<PyramidViewProps> = ({
             row={0}
             col={0}
             hasSelectedToken={hasSelectedToken}
+            isDragging={isDragging}
             onCircleClick={onCircleClick}
           />
 
@@ -148,6 +209,7 @@ const PyramidView: React.FC<PyramidViewProps> = ({
             row={0}
             col={1}
             hasSelectedToken={hasSelectedToken}
+            isDragging={isDragging}
             onCircleClick={onCircleClick}
           />
 
@@ -158,6 +220,7 @@ const PyramidView: React.FC<PyramidViewProps> = ({
             row={0}
             col={2}
             hasSelectedToken={hasSelectedToken}
+            isDragging={isDragging}
             onCircleClick={onCircleClick}
           />
         </div>
@@ -185,6 +248,7 @@ const PyramidView: React.FC<PyramidViewProps> = ({
               row={rowIndex}
               col={colIndex}
               hasSelectedToken={hasSelectedToken}
+              isDragging={isDragging}
               onCircleClick={onCircleClick}
             />
           ))}
