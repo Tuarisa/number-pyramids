@@ -374,10 +374,8 @@ const App: React.FC = () => {
           <div className="w-full max-w-md">
             <PyramidView
               pyramid={puzzle.pyramid}
-              levelId={puzzle.levelId}
               selectedTokenValue={selectedToken?.value ?? null}
               onCircleClick={handleCircleClick}
-              onDrop={handlePlacement}
             />
           </div>
 
@@ -387,7 +385,6 @@ const App: React.FC = () => {
               tokens={puzzle.tokens}
               selectedTokenId={selectedTokenId}
               onTokenSelect={handleTokenSelect}
-              onTokenDragStart={handleTokenSelect}
             />
           </div>
 

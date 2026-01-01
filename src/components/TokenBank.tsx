@@ -1,130 +1,93 @@
 /**
  * TokenBank Component
  *
- * Displays draggable number tokens below the pyramid.
- * Supports:
- * - Drag and drop (mouse and touch)
- * - Tap to select (for easier phone use)
+ * Displays tappable number tokens below the pyramid.
+ * Optimized for touch devices and children:
+ * - Large touch targets
+ * - Clear visual feedback
+ * - Simple tap-to-select interaction
  */
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback } from 'react';
 import { Token } from '../logic/types';
 
 interface TokenBankProps {
   tokens: Token[];
   selectedTokenId: string | null;
   onTokenSelect: (token: Token) => void;
-  onTokenDragStart: (token: Token) => void;
 }
 
 interface TokenChipProps {
   token: Token;
   isSelected: boolean;
   onSelect: (token: Token) => void;
-  onDragStart: (token: Token) => void;
 }
 
 /**
- * Single token chip component
+ * Single token chip component - large, tappable button
  */
 const TokenChip: React.FC<TokenChipProps> = ({
   token,
   isSelected,
   onSelect,
-  onDragStart,
 }) => {
-  const [isDragging, setIsDragging] = useState(false);
-
-  const handleDragStart = useCallback((e: React.DragEvent) => {
-    if (token.isUsed) {
-      e.preventDefault();
-      return;
-    }
-
-    e.dataTransfer.setData('text/plain', token.value.toString());
-    e.dataTransfer.effectAllowed = 'move';
-    setIsDragging(true);
-    onDragStart(token);
-  }, [token, onDragStart]);
-
-  const handleDragEnd = useCallback(() => {
-    setIsDragging(false);
-  }, []);
-
-  const handleClick = useCallback(() => {
+  const handleTap = useCallback(() => {
     if (!token.isUsed) {
       onSelect(token);
     }
   }, [token, onSelect]);
 
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    if (!token.isUsed) {
-      // For touch devices, use tap-to-select
-      e.preventDefault();
-      onSelect(token);
-    }
-  }, [token, onSelect]);
-
-  // Styling
+  // Base classes - extra large for easy tapping
   let baseClasses = `
-    w-14 h-14 sm:w-16 sm:h-16
-    rounded-xl
+    w-16 h-16 sm:w-18 sm:h-18 md:w-20 md:h-20
+    rounded-2xl
     flex items-center justify-center
-    text-2xl sm:text-3xl font-bold
-    transition-all duration-200
+    text-3xl sm:text-4xl font-extrabold
     select-none
-    shadow-lg
+    transition-transform duration-150
+    touch-manipulation
   `;
 
   if (token.isUsed) {
-    // Used token - grayed out
+    // Used token - clearly disabled
     baseClasses += `
       bg-gray-200 text-gray-400
-      border-2 border-gray-300
-      cursor-not-allowed
-      opacity-50
+      border-3 border-gray-300
+      opacity-40
+      scale-90
     `;
   } else if (isSelected) {
-    // Selected token
+    // Selected token - very obvious selection state
     baseClasses += `
-      bg-yellow-400 text-yellow-900
-      border-4 border-yellow-600
-      cursor-grab
+      bg-gradient-to-br from-green-400 to-green-500
+      text-white
+      border-4 border-green-600
+      shadow-xl shadow-green-300/50
       scale-110
-      ring-4 ring-yellow-300 ring-offset-2
-      animate-pulse
+      animate-bounce-once
     `;
   } else {
-    // Available token
+    // Available token - inviting to tap
     baseClasses += `
-      bg-gradient-to-br from-yellow-300 to-yellow-500
-      text-yellow-900
-      border-2 border-yellow-600
-      cursor-grab
-      hover:scale-105 hover:shadow-xl
+      bg-gradient-to-br from-yellow-300 to-amber-400
+      text-amber-900
+      border-3 border-amber-500
+      shadow-lg
       active:scale-95
     `;
   }
 
-  if (isDragging) {
-    baseClasses += ' opacity-50 scale-90';
-  }
-
   return (
-    <div
+    <button
+      type="button"
       className={baseClasses}
-      draggable={!token.isUsed}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-      onClick={handleClick}
-      onTouchStart={handleTouchStart}
-      role="button"
-      aria-label={`Число ${token.value}`}
-      aria-disabled={token.isUsed}
-      tabIndex={token.isUsed ? -1 : 0}
+      onClick={handleTap}
+      disabled={token.isUsed}
+      aria-label={`Число ${token.value}${isSelected ? ', выбрано' : ''}`}
+      aria-pressed={isSelected}
     >
       {token.value}
-    </div>
+    </button>
   );
 };
 
@@ -135,37 +98,44 @@ const TokenBank: React.FC<TokenBankProps> = ({
   tokens,
   selectedTokenId,
   onTokenSelect,
-  onTokenDragStart,
 }) => {
-  // Filter to only show unused tokens, or all if you want to show used as grayed
-  const visibleTokens = tokens; // Show all tokens
+  const hasSelection = selectedTokenId !== null;
+  const unusedTokens = tokens.filter(t => !t.isUsed);
 
   return (
     <div className="w-full">
-      {/* Instructions */}
-      <div className="text-center text-primary-600 text-sm sm:text-base mb-3">
-        Перетащи числа в пустые ячейки или нажми, чтобы выбрать
+      {/* Instructions - context-aware */}
+      <div className={`
+        text-center text-base sm:text-lg font-semibold mb-3 px-4
+        transition-colors duration-200
+        ${hasSelection ? 'text-green-600' : 'text-primary-600'}
+      `}>
+        {hasSelection ? (
+          <span className="flex items-center justify-center gap-2">
+            <span className="text-2xl">👆</span>
+            Нажми на пустую ячейку
+          </span>
+        ) : unusedTokens.length > 0 ? (
+          <span className="flex items-center justify-center gap-2">
+            <span className="text-2xl">👇</span>
+            Выбери число
+          </span>
+        ) : (
+          <span>Все числа расставлены!</span>
+        )}
       </div>
 
-      {/* Token container */}
-      <div className="flex flex-wrap justify-center gap-3 sm:gap-4 p-4 bg-white/50 rounded-2xl backdrop-blur-sm">
-        {visibleTokens.map((token) => (
+      {/* Token container - larger gaps for easy tapping */}
+      <div className="flex flex-wrap justify-center gap-4 sm:gap-5 p-4 sm:p-5 bg-white/60 rounded-3xl backdrop-blur-sm">
+        {tokens.map((token) => (
           <TokenChip
             key={token.id}
             token={token}
             isSelected={selectedTokenId === token.id}
             onSelect={onTokenSelect}
-            onDragStart={onTokenDragStart}
           />
         ))}
       </div>
-
-      {/* Help text for tap-to-place mode */}
-      {selectedTokenId && (
-        <div className="text-center text-primary-600 text-sm mt-2 animate-pulse">
-          Теперь нажми на пустую ячейку, чтобы поставить число
-        </div>
-      )}
     </div>
   );
 };
