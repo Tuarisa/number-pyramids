@@ -153,18 +153,63 @@ const App: React.FC = () => {
     setDraggedToken(null);
   }, [puzzle, draggedToken]);
 
-  // Handle circle click (for tap-to-place mode)
+  // Handle undo for Level 1 placed values
+  const handleLevel1Undo = useCallback((col: number) => {
+    if (!puzzle) return;
+
+    const placed = placedValues.get(col);
+    if (!placed) return;
+
+    // Remove from placed values
+    const newPlacedValues = new Map(placedValues);
+    newPlacedValues.delete(col);
+    setPlacedValues(newPlacedValues);
+
+    // Make the cell empty again
+    const updatedPuzzle = { ...puzzle };
+    updatedPuzzle.pyramid = {
+      ...puzzle.pyramid,
+      rows: puzzle.pyramid.rows.map((r, ri) =>
+        r.map((c, ci) => {
+          if (ri === 0 && ci === col) {
+            return { ...c, value: 0, isEmpty: true };
+          }
+          return c;
+        })
+      ),
+    };
+
+    // Return the token
+    updatedPuzzle.tokens = puzzle.tokens.map((t) =>
+      t.id === placed.tokenId ? { ...t, isUsed: false } : t
+    );
+
+    setPuzzle(updatedPuzzle);
+    showToast('Отменено', 'info');
+  }, [puzzle, placedValues, showToast]);
+
+  // Handle circle click (for tap-to-place mode or undo)
   const handleCircleClick = useCallback((row: number, col: number) => {
-    if (!puzzle || !selectedTokenId) return;
+    if (!puzzle) return;
+
+    const circle = puzzle.pyramid.rows[row]?.[col];
+    if (!circle) return;
+
+    const isLevel1 = puzzle.levelId === 1;
+
+    // Check if this is a user-placed cell in Level 1 (for undo)
+    if (isLevel1 && !circle.isEmpty && placedValues.has(col)) {
+      handleLevel1Undo(col);
+      return;
+    }
+
+    // Normal placement logic
+    if (!selectedTokenId) return;
 
     const token = puzzle.tokens.find((t) => t.id === selectedTokenId);
     if (!token || token.isUsed) return;
 
-    const circle = puzzle.pyramid.rows[row]?.[col];
-    if (!circle || !circle.isEmpty) return;
-
-    // For Level 1: ALWAYS use equation-based validation
-    const isLevel1 = puzzle.levelId === 1;
+    if (!circle.isEmpty) return;
 
     if (isLevel1) {
       // Level 1: validate equation (left + middle = right)
@@ -175,7 +220,7 @@ const App: React.FC = () => {
     }
 
     setSelectedTokenId(null);
-  }, [puzzle, selectedTokenId]);
+  }, [puzzle, selectedTokenId, placedValues, handleLevel1Undo]);
 
   // Level 1 placement with deferred validation
   const handleLevel1Placement = useCallback((col: number, value: number, tokenId: string) => {
@@ -569,6 +614,7 @@ const App: React.FC = () => {
               selectedTokenValue={selectedToken?.value ?? draggedToken?.value ?? null}
               isDragging={isDragging}
               onCircleClick={handleCircleClick}
+              userPlacedCols={puzzle.levelId === 1 ? placedValues : null}
             />
           </div>
 

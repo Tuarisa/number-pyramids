@@ -42,6 +42,7 @@ interface PyramidViewProps {
   selectedTokenValue: number | null;
   isDragging: boolean;
   onCircleClick: (row: number, col: number) => void;
+  userPlacedCols?: Map<number, { value: number; tokenId: string }> | null;
 }
 
 interface CircleProps {
@@ -51,6 +52,7 @@ interface CircleProps {
   hasSelectedToken: boolean;
   isDragging: boolean;
   onCircleClick: (row: number, col: number) => void;
+  isUserPlaced?: boolean;
 }
 
 /**
@@ -63,6 +65,7 @@ const CircleCell: React.FC<CircleProps> = ({
   hasSelectedToken,
   isDragging,
   onCircleClick,
+  isUserPlaced = false,
 }) => {
   const elementRef = useRef<HTMLButtonElement>(null);
 
@@ -85,10 +88,11 @@ const CircleCell: React.FC<CircleProps> = ({
   }, [circle.isEmpty, row, col]);
 
   const handleTap = useCallback(() => {
-    if (circle.isEmpty) {
+    // Allow click for empty cells or user-placed cells (for undo)
+    if (circle.isEmpty || isUserPlaced) {
       onCircleClick(row, col);
     }
-  }, [circle.isEmpty, row, col, onCircleClick]);
+  }, [circle.isEmpty, isUserPlaced, row, col, onCircleClick]);
 
   // Base classes - large for easy viewing and tapping
   let baseClasses = `
@@ -128,8 +132,17 @@ const CircleCell: React.FC<CircleProps> = ({
         shadow-inner
       `;
     }
+  } else if (isUserPlaced) {
+    // User-placed cell - can be undone (tap to remove)
+    baseClasses += `
+      bg-amber-100
+      border-4 border-amber-400
+      shadow-lg
+      cursor-pointer
+      active:scale-95
+    `;
   } else {
-    // Filled circle
+    // Filled circle (given value)
     baseClasses += `
       bg-white
       border-4 border-primary-500
@@ -144,19 +157,30 @@ const CircleCell: React.FC<CircleProps> = ({
     baseClasses += ' animate-shake bg-red-200 border-red-500 border-solid';
   }
 
+  // Determine if button should be enabled
+  const isClickable = circle.isEmpty || isUserPlaced;
+
   return (
     <button
       ref={elementRef}
       type="button"
       className={baseClasses}
       onClick={handleTap}
-      disabled={!circle.isEmpty}
+      disabled={!isClickable}
       data-row={row}
       data-col={col}
-      aria-label={circle.isEmpty ? 'Пустая ячейка - нажми чтобы поставить число' : `Число ${circle.value}`}
+      aria-label={
+        circle.isEmpty
+          ? 'Пустая ячейка - нажми чтобы поставить число'
+          : isUserPlaced
+            ? `Число ${circle.value} - нажми чтобы отменить`
+            : `Число ${circle.value}`
+      }
     >
       {!circle.isEmpty && (
-        <span className="text-primary-800">{circle.value}</span>
+        <span className={isUserPlaced ? 'text-amber-800' : 'text-primary-800'}>
+          {circle.value}
+        </span>
       )}
       {circle.isEmpty && !circle.isAnimating && (
         <span className={`text-4xl ${isDragging ? 'text-amber-500' : hasSelectedToken ? 'text-green-500' : 'text-primary-200'}`}>
@@ -175,6 +199,7 @@ const PyramidView: React.FC<PyramidViewProps> = ({
   selectedTokenValue,
   isDragging,
   onCircleClick,
+  userPlacedCols,
 }) => {
   const numRows = pyramid.rows.length;
   const isLine = numRows === 1;
@@ -188,7 +213,9 @@ const PyramidView: React.FC<PyramidViewProps> = ({
       <div className="flex flex-col items-center gap-4">
         {/* Equation hint */}
         <div className="text-primary-600 text-lg sm:text-xl font-bold mb-2">
-          Найди пропущенное число!
+          {userPlacedCols && userPlacedCols.size > 0
+            ? 'Нажми на число чтобы отменить'
+            : 'Найди пропущенное число!'}
         </div>
 
         {/* Line of circles with operators */}
@@ -200,6 +227,7 @@ const PyramidView: React.FC<PyramidViewProps> = ({
             hasSelectedToken={hasSelectedToken}
             isDragging={isDragging}
             onCircleClick={onCircleClick}
+            isUserPlaced={userPlacedCols?.has(0) ?? false}
           />
 
           <span className="text-4xl sm:text-5xl font-bold text-primary-500">+</span>
@@ -211,6 +239,7 @@ const PyramidView: React.FC<PyramidViewProps> = ({
             hasSelectedToken={hasSelectedToken}
             isDragging={isDragging}
             onCircleClick={onCircleClick}
+            isUserPlaced={userPlacedCols?.has(1) ?? false}
           />
 
           <span className="text-4xl sm:text-5xl font-bold text-primary-500">=</span>
@@ -222,6 +251,7 @@ const PyramidView: React.FC<PyramidViewProps> = ({
             hasSelectedToken={hasSelectedToken}
             isDragging={isDragging}
             onCircleClick={onCircleClick}
+            isUserPlaced={userPlacedCols?.has(2) ?? false}
           />
         </div>
       </div>
