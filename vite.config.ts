@@ -12,7 +12,7 @@ export default defineConfig({
       manifest: {
         name: 'Number Pyramids Trainer',
         short_name: 'Pyramids',
-        description: 'Числовые пирамиды - математический тренажёр для детей',
+        description: 'Числовые пирамиды - математический тренажёр для детей v1.1.0',
         theme_color: '#6366f1',
         background_color: '#fef3c7',
         display: 'standalone',
