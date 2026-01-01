@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Background -->
+  <rect width="512" height="512" rx="64" fill="#6366f1"/>
+
+  <!-- Pyramid shape -->
+  <polygon points="256,80 420,400 92,400" fill="#fbbf24" stroke="#ffffff" stroke-width="12"/>
+
+  <!-- Inner circles representing numbers -->
+  <circle cx="256" cy="160" r="35" fill="#ffffff"/>
+  <circle cx="190" cy="280" r="35" fill="#ffffff"/>
+  <circle cx="322" cy="280" r="35" fill="#ffffff"/>
+  <circle cx="140" cy="360" r="30" fill="#ffffff"/>
+  <circle cx="256" cy="360" r="30" fill="#ffffff"/>
+  <circle cx="372" cy="360" r="30" fill="#ffffff"/>
+
+  <!-- Number symbols -->
+  <text x="256" y="172" text-anchor="middle" fill="#6366f1" font-size="40" font-weight="bold" font-family="Arial">?</text>
+  <text x="190" y="292" text-anchor="middle" fill="#6366f1" font-size="40" font-weight="bold" font-family="Arial">+</text>
+  <text x="322" y="292" text-anchor="middle" fill="#6366f1" font-size="40" font-weight="bold" font-family="Arial">=</text>
+</svg>
