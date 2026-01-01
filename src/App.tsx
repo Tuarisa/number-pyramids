@@ -17,7 +17,7 @@ import {
   Token,
 } from './logic/types';
 import { generatePuzzle, getHint, countEmptyCircles } from './logic/pyramids';
-import { isValueCorrect } from './logic/validation';
+import { isValueCorrect, isLineEquationValid } from './logic/validation';
 import { calculateResult, updateProgress, saveLastLevel } from './logic/progress';
 import { progressStorage } from './logic/storage';
 
@@ -58,6 +58,10 @@ const App: React.FC = () => {
   const [showResult, setShowResult] = useState(false);
   const [result, setResult] = useState<PuzzleResult | null>(null);
   const [newAchievements, setNewAchievements] = useState<Achievement[]>([]);
+
+  // Level 1 deferred validation: track placed values until all cells are filled
+  // Map of col -> { value, tokenId }
+  const [placedValues, setPlacedValues] = useState<Map<number, { value: number; tokenId: string }>>(new Map());
   const [toast, setToast] = useState<ToastState | null>(null);
 
   // Reload progress when coming back to main screen
@@ -78,6 +82,7 @@ const App: React.FC = () => {
     setPuzzle(newPuzzle);
     setTaskNumber(1);
     setSelectedTokenId(null);
+    setPlacedValues(new Map());
     setShowResult(false);
     setResult(null);
     setScreen('game');
@@ -92,6 +97,7 @@ const App: React.FC = () => {
     setPuzzle(newPuzzle);
     setTaskNumber((prev) => prev + 1);
     setSelectedTokenId(null);
+    setPlacedValues(new Map());
     setShowResult(false);
     setResult(null);
   }, [puzzle]);
@@ -109,17 +115,159 @@ const App: React.FC = () => {
     const token = puzzle.tokens.find((t) => t.id === selectedTokenId);
     if (!token || token.isUsed) return;
 
-    // Try to place the selected token
-    handlePlacement(row, col, token.value);
+    const circle = puzzle.pyramid.rows[row]?.[col];
+    if (!circle || !circle.isEmpty) return;
+
+    // For Level 1 with multiple empty cells: defer validation
+    const isLevel1 = puzzle.levelId === 1;
+    const originalEmptyCount = puzzle.pyramid.rows[0].filter(c => c.isEmpty).length;
+    const shouldDefer = isLevel1 && originalEmptyCount >= 2;
+
+    if (shouldDefer) {
+      // Level 1 deferred validation: place without checking, validate when all filled
+      handleLevel1Placement(col, token.value, token.id);
+    } else {
+      // Level 2, 3 or Level 1 with single empty: validate immediately
+      handleImmediatePlacement(row, col, token.value);
+    }
+
     setSelectedTokenId(null);
   }, [puzzle, selectedTokenId]);
 
-  // Handle placement (from drag-drop or tap-to-place)
-  const handlePlacement = useCallback((row: number, col: number, value: number) => {
+  // Level 1 placement with deferred validation
+  const handleLevel1Placement = useCallback((col: number, value: number, tokenId: string) => {
     if (!puzzle) return;
 
-    const circle = puzzle.pyramid.rows[row]?.[col];
-    if (!circle || !circle.isEmpty) return;
+    // Track this placement
+    const newPlacedValues = new Map(placedValues);
+    newPlacedValues.set(col, { value, tokenId });
+    setPlacedValues(newPlacedValues);
+
+    // Update visual: show number in circle (temporarily)
+    const updatedPuzzle = { ...puzzle };
+    updatedPuzzle.pyramid = {
+      ...puzzle.pyramid,
+      rows: puzzle.pyramid.rows.map((r, ri) =>
+        r.map((c, ci) => {
+          if (ri === 0 && ci === col) {
+            return { ...c, value, isEmpty: false };
+          }
+          return c;
+        })
+      ),
+    };
+
+    // Mark token as used
+    updatedPuzzle.tokens = puzzle.tokens.map((t) =>
+      t.id === tokenId ? { ...t, isUsed: true } : t
+    );
+
+    setPuzzle(updatedPuzzle);
+
+    // Check if all Level 1 cells are now filled
+    const remainingEmpty = updatedPuzzle.pyramid.rows[0].filter(c => c.isEmpty).length;
+
+    if (remainingEmpty === 0) {
+      // All cells filled - now validate the equation
+      const valuesMap = new Map<number, number>();
+      newPlacedValues.forEach((v, k) => valuesMap.set(k, v.value));
+
+      const isValid = isLineEquationValid(updatedPuzzle.pyramid, valuesMap);
+
+      if (isValid) {
+        // Correct! Animate success
+        setPuzzle(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            pyramid: {
+              ...prev.pyramid,
+              rows: prev.pyramid.rows.map(r =>
+                r.map(c => ({ ...c, isAnimating: 'correct' as const }))
+              ),
+            },
+          };
+        });
+
+        setTimeout(() => {
+          setPuzzle(prev => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              pyramid: {
+                ...prev.pyramid,
+                rows: prev.pyramid.rows.map(r =>
+                  r.map(c => ({ ...c, isAnimating: null }))
+                ),
+              },
+            };
+          });
+        }, 500);
+
+        setTimeout(() => {
+          handlePuzzleSolved(updatedPuzzle);
+        }, 600);
+      } else {
+        // Wrong! Shake all cells and reset
+        updatedPuzzle.wrongAttempts += 1;
+
+        setPuzzle(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            wrongAttempts: prev.wrongAttempts + 1,
+            pyramid: {
+              ...prev.pyramid,
+              rows: prev.pyramid.rows.map(r =>
+                r.map(c => ({ ...c, isAnimating: 'wrong' as const }))
+              ),
+            },
+          };
+        });
+
+        showToast('Не сходится! Попробуй другие числа', 'error');
+
+        // After shake animation, reset placed cells
+        setTimeout(() => {
+          setPuzzle(prev => {
+            if (!prev) return prev;
+
+            // Get original empty positions from placedValues
+            const originalCircles = prev.pyramid.rows[0].map((c, idx) => {
+              if (newPlacedValues.has(idx)) {
+                // This was a user-placed cell, make it empty again
+                return { ...c, value: 0, isEmpty: true, isAnimating: null };
+              }
+              return { ...c, isAnimating: null };
+            });
+
+            // Reset tokens that were used for placed values
+            const resetTokens = prev.tokens.map(t => {
+              for (const [, v] of newPlacedValues) {
+                if (t.id === v.tokenId) {
+                  return { ...t, isUsed: false };
+                }
+              }
+              return t;
+            });
+
+            return {
+              ...prev,
+              pyramid: { rows: [originalCircles] },
+              tokens: resetTokens,
+            };
+          });
+
+          // Clear placed values
+          setPlacedValues(new Map());
+        }, 600);
+      }
+    }
+  }, [puzzle, placedValues, showToast]);
+
+  // Immediate validation (Level 2, 3 or Level 1 single empty)
+  const handleImmediatePlacement = useCallback((row: number, col: number, value: number) => {
+    if (!puzzle) return;
 
     const correct = isValueCorrect(puzzle, row, col, value);
 

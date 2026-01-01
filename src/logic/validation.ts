@@ -2,14 +2,15 @@
  * Validation logic for Number Pyramids
  *
  * Handles checking if placed values are correct according to:
- * - For line puzzles: left + middle = right
- * - For triangle pyramids: parent = left_child + right_child
+ * - For line puzzles: left + middle = right (validated after ALL cells filled)
+ * - For triangle pyramids: parent = left_child + right_child (validated per-cell)
  */
 
-import { Pyramid, PuzzleState } from './types';
+import { Pyramid, PuzzleState, LevelId } from './types';
 
 /**
  * Check if a value placed at a position is correct
+ * Used for Level 2 & 3 (triangle pyramids) - per-cell validation
  *
  * @param puzzle - Current puzzle state
  * @param row - Row index
@@ -34,6 +35,32 @@ export function isValueCorrect(
 }
 
 /**
+ * Check if Level 1 (line) equation is valid
+ * Called after ALL empty cells are filled
+ *
+ * @param pyramid - Pyramid with placed values
+ * @param placedValues - Map of col -> placed value for user-filled cells
+ * @returns true if left + middle = right
+ */
+export function isLineEquationValid(
+  pyramid: Pyramid,
+  placedValues: Map<number, number>
+): boolean {
+  const circles = pyramid.rows[0];
+  if (circles.length !== 3) return false;
+
+  // Get values - use placed values if cell was empty, otherwise use original
+  const values = circles.map((circle, col) => {
+    if (placedValues.has(col)) {
+      return placedValues.get(col)!;
+    }
+    return circle.value;
+  });
+
+  return values[0] + values[1] === values[2];
+}
+
+/**
  * Check if the entire pyramid is solved
  * A pyramid is solved when all empty circles have been correctly filled
  */
@@ -46,6 +73,23 @@ export function isPyramidSolved(pyramid: Pyramid): boolean {
     }
   }
   return true;
+}
+
+/**
+ * Check if validation should be deferred until all cells are filled
+ * Returns true for Level 1 (lines) with multiple empty cells
+ */
+export function shouldDeferValidation(levelId: LevelId, pyramid: Pyramid): boolean {
+  if (levelId !== 1) return false;
+
+  // Count empty cells in Level 1
+  let emptyCount = 0;
+  for (const circle of pyramid.rows[0]) {
+    if (circle.isEmpty) emptyCount++;
+  }
+
+  // Defer if there are 2 or more empty cells (multiple valid solutions possible)
+  return emptyCount >= 2;
 }
 
 /**
