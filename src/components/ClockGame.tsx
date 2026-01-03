@@ -40,6 +40,7 @@ const ClockGame: React.FC<ClockGameProps> = ({
   // For 'read' mode: user selected time
   const [selectedHours, setSelectedHours] = useState(12);
   const [selectedMinutes, setSelectedMinutes] = useState(0);
+  const [puzzleKey, setPuzzleKey] = useState(0); // Counter to force remount on puzzle change
 
   // For 'set' mode: generate multiple clock options
   const [clockOptions, setClockOptions] = useState<Array<{ hours: number; minutes: number; isCorrect: boolean }>>([]);
@@ -101,11 +102,16 @@ const ClockGame: React.FC<ClockGameProps> = ({
 
   // Reset state when puzzle changes
   useEffect(() => {
+    // Reset to 12:00 first, then increment key to force remount
     setSelectedHours(12);
     setSelectedMinutes(0);
     setSelectedOption(null);
     setShowCorrect(false);
     setShowWrong(false);
+    // Increment key AFTER state is reset to ensure TimePicker gets correct initial values
+    setTimeout(() => {
+      setPuzzleKey(prev => prev + 1);
+    }, 0);
   }, [puzzle]);
 
   // Handle time change from picker for 'read' mode
@@ -253,7 +259,7 @@ const ClockGame: React.FC<ClockGameProps> = ({
             minutes={selectedMinutes}
             onTimeChange={handleTimeChange}
             disabled={showCorrect || showWrong}
-            key={`picker-${puzzle.hours}-${puzzle.minutes}`}
+            key={`picker-${puzzle.hours}-${puzzle.minutes}-${puzzle.mode}-${puzzleKey}`}
           />
           <div className="text-xl font-bold text-primary-700 mt-2">
             {formatTime(selectedHours, selectedMinutes)}

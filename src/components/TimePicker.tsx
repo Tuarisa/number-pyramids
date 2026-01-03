@@ -79,11 +79,15 @@ const TimePicker: React.FC<TimePickerProps> = ({
   const isScrollingRef = useRef(false);
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastPropsRef = useRef({ hours: initialHours, minutes: initialMinutes });
+  const isUpdatingRef = useRef(false); // Flag to prevent onTimeChange during programmatic updates
   
   // Initialize scroll positions on mount
   useEffect(() => {
     if (hoursRef.current && minutesRef.current && !isInitializedRef.current) {
       isInitializedRef.current = true;
+      
+      // Set flag to prevent onTimeChange during initialization
+      isUpdatingRef.current = true;
       
       const hoursScroll = getInitialScrollTop(initialHours, hourOptions);
       const minutesScroll = getInitialScrollTop(initialMinutes, minuteOptions);
@@ -139,6 +143,11 @@ const TimePicker: React.FC<TimePickerProps> = ({
                   hoursRef.current.scrollTop = hoursScroll;
                   minutesRef.current.scrollTop = minutesScroll;
                 }
+                
+                // Clear update flag after initialization is complete
+                setTimeout(() => {
+                  isUpdatingRef.current = false;
+                }, 200);
               }
             });
           });
@@ -154,11 +163,61 @@ const TimePicker: React.FC<TimePickerProps> = ({
     if (isInitializedRef.current && hoursRef.current && minutesRef.current) {
       // Only update if values actually changed (new puzzle)
       if (initialHours !== lastPropsRef.current.hours || initialMinutes !== lastPropsRef.current.minutes) {
+        
+        // Set flag to prevent onTimeChange during programmatic update
+        isUpdatingRef.current = true;
+        
+        // Clear any pending scroll timeouts
+        if (scrollTimeoutRef.current) {
+          clearTimeout(scrollTimeoutRef.current);
+          scrollTimeoutRef.current = null;
+        }
+        
+        // Temporarily disable snap to set position accurately
+        hoursRef.current.classList.remove('snap-y', 'snap-mandatory');
+        minutesRef.current.classList.remove('snap-y', 'snap-mandatory');
+        
         const hoursScroll = getInitialScrollTop(initialHours, hourOptions);
         const minutesScroll = getInitialScrollTop(initialMinutes, minuteOptions);
         
         hoursRef.current.scrollTop = hoursScroll;
         minutesRef.current.scrollTop = minutesScroll;
+        
+        // Force reflow
+        void hoursRef.current.offsetHeight;
+        void minutesRef.current.offsetHeight;
+        
+        // Set again to ensure it sticks
+        hoursRef.current.scrollTop = hoursScroll;
+        minutesRef.current.scrollTop = minutesScroll;
+        
+        // Re-enable snap after a delay
+        setTimeout(() => {
+          if (hoursRef.current && minutesRef.current) {
+            // Verify position is still correct before enabling snap
+            const currentHours = getValueFromScroll(hoursRef.current.scrollTop, hourOptions);
+            const currentMinutes = getValueFromScroll(minutesRef.current.scrollTop, minuteOptions);
+            
+            // If position changed, fix it
+            if (currentHours !== initialHours || currentMinutes !== initialMinutes) {
+              hoursRef.current.scrollTop = hoursScroll;
+              minutesRef.current.scrollTop = minutesScroll;
+              void hoursRef.current.offsetHeight;
+              void minutesRef.current.offsetHeight;
+              hoursRef.current.scrollTop = hoursScroll;
+              minutesRef.current.scrollTop = minutesScroll;
+            }
+            
+            // Re-enable snap
+            hoursRef.current.classList.add('snap-y', 'snap-mandatory');
+            minutesRef.current.classList.add('snap-y', 'snap-mandatory');
+            
+            // Clear update flag after a delay to allow scroll events to be processed
+            setTimeout(() => {
+              isUpdatingRef.current = false;
+            }, 200);
+          }
+        }, 150);
         
         lastPropsRef.current = { hours: initialHours, minutes: initialMinutes };
       }
@@ -191,7 +250,7 @@ const TimePicker: React.FC<TimePickerProps> = ({
   
   // Handle scroll event
   const handleScroll = useCallback((type: 'hours' | 'minutes') => {
-    if (!isInitializedRef.current || disabled) return;
+    if (!isInitializedRef.current || disabled || isUpdatingRef.current) return;
     
     const ref = type === 'hours' ? hoursRef : minutesRef;
     const options = type === 'hours' ? hourOptions : minuteOptions;
@@ -213,6 +272,9 @@ const TimePicker: React.FC<TimePickerProps> = ({
     scrollTimeoutRef.current = setTimeout(() => {
       isScrollingRef.current = false;
       
+      // Don't notify if we're in the middle of a programmatic update
+      if (isUpdatingRef.current) return;
+      
       // Get final values from both pickers
       const finalHoursScroll = hoursRef.current?.scrollTop ?? 0;
       const finalMinutesScroll = minutesRef.current?.scrollTop ?? 0;
@@ -221,7 +283,9 @@ const TimePicker: React.FC<TimePickerProps> = ({
       
       // Notify parent asynchronously to avoid setState during render
       setTimeout(() => {
-        onTimeChange(finalHours, finalMinutes);
+        if (!isUpdatingRef.current) {
+          onTimeChange(finalHours, finalMinutes);
+        }
       }, 0);
     }, 150);
   }, [disabled, onTimeChange]);
