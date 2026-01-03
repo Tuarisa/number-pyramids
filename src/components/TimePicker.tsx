@@ -139,15 +139,20 @@ const TimePicker: React.FC<TimePickerProps> = ({
     setter: (value: number) => void,
     type: 'hours' | 'minutes'
   ) => {
-    if (!ref.current || disabled) return;
+    if (!ref.current || disabled || isScrollingRef.current) return;
 
-    // Handle infinite scroll
-    handleInfiniteScroll(ref, options, extendedOptions);
-
+    // Get current scroll position
     const scrollTop = ref.current.scrollTop;
-    const index = Math.round(scrollTop / itemHeight);
-    const valueIndex = index % options.length;
-    const value = options[valueIndex];
+    
+    // Calculate which item is in the center (accounting for startOffset)
+    const relativeScroll = scrollTop - startOffset;
+    const index = Math.round(relativeScroll / itemHeight);
+    // Normalize index to be within options range
+    let normalizedIndex = index % options.length;
+    if (normalizedIndex < 0) {
+      normalizedIndex += options.length;
+    }
+    const value = options[normalizedIndex];
 
     setter(value);
     
@@ -164,6 +169,9 @@ const TimePicker: React.FC<TimePickerProps> = ({
       });
     }
 
+    // Handle infinite scroll after value is set
+    handleInfiniteScroll(ref, options, extendedOptions);
+
     // Debounce snap to avoid too frequent updates
     if (snapTimeoutRef.current) {
       clearTimeout(snapTimeoutRef.current);
@@ -172,11 +180,15 @@ const TimePicker: React.FC<TimePickerProps> = ({
     snapTimeoutRef.current = setTimeout(() => {
       if (ref.current && !isScrollingRef.current) {
         const currentScroll = ref.current.scrollTop;
+        const relativeScroll = currentScroll - startOffset;
         
         // Snap to nearest position in middle copy
-        const targetIndex = Math.round(currentScroll / itemHeight);
-        const targetValueIndex = targetIndex % options.length;
-        const targetScroll = startOffset + (targetValueIndex * itemHeight);
+        const targetIndex = Math.round(relativeScroll / itemHeight);
+        let normalizedIndex = targetIndex % options.length;
+        if (normalizedIndex < 0) {
+          normalizedIndex += options.length;
+        }
+        const targetScroll = startOffset + (normalizedIndex * itemHeight);
         
         // Only snap if we're not in the middle copy
         const distanceFromMiddle = Math.abs(currentScroll - targetScroll);
@@ -188,7 +200,7 @@ const TimePicker: React.FC<TimePickerProps> = ({
         }
       }
     }, 150);
-  }, [disabled, onTimeChange, handleInfiniteScroll]);
+  }, [disabled, onTimeChange, handleInfiniteScroll, startOffset]);
 
   return (
     <div className="flex items-center gap-2">
