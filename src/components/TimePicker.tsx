@@ -172,8 +172,6 @@ const TimePicker: React.FC<TimePickerProps> = ({
     snapTimeoutRef.current = setTimeout(() => {
       if (ref.current && !isScrollingRef.current) {
         const currentScroll = ref.current.scrollTop;
-        const currentIndex = Math.round(currentScroll / itemHeight);
-        const valueIndex = currentIndex % options.length;
         
         // Snap to nearest position in middle copy
         const targetIndex = Math.round(currentScroll / itemHeight);
