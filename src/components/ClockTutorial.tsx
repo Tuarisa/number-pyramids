@@ -26,7 +26,6 @@ interface ClockTutorialProps {
 
 const ClockTutorial: React.FC<ClockTutorialProps> = ({ onComplete, onBack }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [animatedTime, setAnimatedTime] = useState({ hours: 12, minutes: 0 });
   const [highlightedDivision, setHighlightedDivision] = useState<number | null>(null);
@@ -112,9 +111,10 @@ const ClockTutorial: React.FC<ClockTutorialProps> = ({ onComplete, onBack }) => 
     utterance.rate = 0.9; // Slightly slower for children
     utterance.pitch = 1.1; // Slightly higher pitch for friendliness
     
-    utterance.onstart = () => setIsPlaying(true);
-    utterance.onend = () => setIsPlaying(false);
-    utterance.onerror = () => setIsPlaying(false);
+    // Speech synthesis callbacks (no state needed for now)
+    utterance.onstart = () => {};
+    utterance.onend = () => {};
+    utterance.onerror = () => {};
     
     speechSynthesisRef.current = utterance;
     window.speechSynthesis.speak(utterance);
@@ -123,7 +123,6 @@ const ClockTutorial: React.FC<ClockTutorialProps> = ({ onComplete, onBack }) => 
   // Stop speech
   const stopSpeech = () => {
     window.speechSynthesis.cancel();
-    setIsPlaying(false);
   };
 
   // Handle slide animations
