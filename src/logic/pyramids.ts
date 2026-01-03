@@ -27,7 +27,6 @@ import {
   Circle,
   Token,
   PuzzleState,
-  LevelId,
   LevelConfig,
   LEVEL_CONFIGS,
 } from './types';
@@ -419,7 +418,7 @@ function generateTokens(
 /**
  * Generate a new puzzle for the given level
  */
-export function generatePuzzle(levelId: LevelId): PuzzleState {
+export function generatePuzzle(levelId: 1 | 2 | 3): PuzzleState {
   const config = LEVEL_CONFIGS[levelId];
 
   let pyramid: Pyramid;

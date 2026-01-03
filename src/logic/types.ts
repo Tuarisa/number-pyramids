@@ -52,8 +52,10 @@ export interface Token {
 
 /**
  * Difficulty level identifiers
+ * 1-3: Pyramid levels
+ * 4: Clock time reading
  */
-export type LevelId = 1 | 2 | 3;
+export type LevelId = 1 | 2 | 3 | 4;
 
 /**
  * Level configuration for puzzle generation
@@ -84,7 +86,7 @@ export interface LevelConfig {
  * Default level configurations
  * TWEAK: Adjust these values to change difficulty
  */
-export const LEVEL_CONFIGS: Record<LevelId, LevelConfig> = {
+export const LEVEL_CONFIGS: Record<1 | 2 | 3, LevelConfig> = {
   1: {
     id: 1,
     name: 'Уровень 1: Линии',
@@ -121,6 +123,35 @@ export const LEVEL_CONFIGS: Record<LevelId, LevelConfig> = {
     minDistractors: 3,
     maxDistractors: 4,
   },
+};
+
+// ============================================================================
+// CLOCK GAME (Level 4)
+// ============================================================================
+
+/**
+ * Clock game mode
+ * - 'read': Show clock hands → user enters time
+ * - 'set': Show digital time → user sets hands
+ */
+export type ClockMode = 'read' | 'set';
+
+/**
+ * Clock puzzle state
+ */
+export interface ClockPuzzle {
+  hours: number;      // 1-12
+  minutes: number;    // 0-59, in 5-minute increments
+  mode: ClockMode;
+}
+
+/**
+ * Level 4 info (not a LevelConfig since it's different)
+ */
+export const LEVEL4_INFO = {
+  id: 4 as const,
+  name: 'Уровень 4: Часы',
+  description: 'Определи время по часам',
 };
 
 // ============================================================================
@@ -194,6 +225,7 @@ export const DEFAULT_PROGRESS: Progress = {
     1: { solved: 0, bestStreak: 0, currentStreak: 0 },
     2: { solved: 0, bestStreak: 0, currentStreak: 0 },
     3: { solved: 0, bestStreak: 0, currentStreak: 0 },
+    4: { solved: 0, bestStreak: 0, currentStreak: 0 },
   },
   unlockedAchievements: [],
   lastSelectedLevel: 1,
@@ -278,6 +310,20 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: 'Реши 20 задач на Уровне 2',
     icon: '🔺',
     condition: (p) => p.levelStats[2].solved >= 20,
+  },
+  {
+    id: 'clock_reader',
+    title: 'Часовщик',
+    description: 'Реши 10 задач с часами',
+    icon: '🕐',
+    condition: (p) => p.levelStats[4].solved >= 10,
+  },
+  {
+    id: 'time_master',
+    title: 'Мастер времени',
+    description: 'Реши 30 задач с часами',
+    icon: '⏰',
+    condition: (p) => p.levelStats[4].solved >= 30,
   },
 ];
 

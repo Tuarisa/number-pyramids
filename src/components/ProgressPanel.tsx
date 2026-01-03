@@ -7,7 +7,7 @@
  */
 
 import React from 'react';
-import { Progress, LevelId, LEVEL_CONFIGS } from '../logic/types';
+import { Progress, LevelId, LEVEL_CONFIGS, LEVEL4_INFO } from '../logic/types';
 
 interface ProgressPanelProps {
   progress: Progress;
@@ -46,9 +46,11 @@ const ProgressPanel: React.FC<ProgressPanelProps> = ({ progress }) => {
         </h3>
 
         <div className="space-y-2">
-          {([1, 2, 3] as LevelId[]).map((levelId) => {
+          {([1, 2, 3, 4] as LevelId[]).map((levelId) => {
             const stats = progress.levelStats[levelId];
-            const config = LEVEL_CONFIGS[levelId];
+            const levelName = levelId === 4
+              ? LEVEL4_INFO.name.split(':')[0]
+              : LEVEL_CONFIGS[levelId].name.split(':')[0];
 
             return (
               <div
@@ -56,7 +58,7 @@ const ProgressPanel: React.FC<ProgressPanelProps> = ({ progress }) => {
                 className="flex items-center justify-between text-sm"
               >
                 <span className="text-gray-700">
-                  {config.name.split(':')[0]}:
+                  {levelName}:
                 </span>
                 <span className="font-medium text-primary-700">
                   {stats.solved} задач

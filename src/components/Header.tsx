@@ -8,7 +8,7 @@
  */
 
 import React from 'react';
-import { LevelId, LEVEL_CONFIGS } from '../logic/types';
+import { LevelId, LEVEL_CONFIGS, LEVEL4_INFO } from '../logic/types';
 
 interface HeaderProps {
   levelId: LevelId;
@@ -23,7 +23,7 @@ const Header: React.FC<HeaderProps> = ({
   currentStreak,
   onBack,
 }) => {
-  const config = LEVEL_CONFIGS[levelId];
+  const levelName = levelId === 4 ? LEVEL4_INFO.name : LEVEL_CONFIGS[levelId].name;
 
   return (
     <header className="bg-white/90 backdrop-blur-sm shadow-md px-4 py-3 sticky top-0 z-40">
@@ -46,7 +46,7 @@ const Header: React.FC<HeaderProps> = ({
         {/* Level and task info */}
         <div className="flex-1 min-w-0">
           <h1 className="font-bold text-primary-800 truncate">
-            {config.name}
+            {levelName}
           </h1>
           <div className="flex items-center gap-3 text-sm text-gray-600">
             <span>Задача №{taskNumber}</span>

@@ -15,6 +15,7 @@ import {
   PuzzleResult,
   Achievement,
   Token,
+  ClockPuzzle,
 } from './logic/types';
 import { generatePuzzle, getHint, countEmptyCircles } from './logic/pyramids';
 import { isValueCorrect, isLineEquationValid } from './logic/validation';
@@ -33,6 +34,7 @@ import ResultModal from './components/ResultModal';
 import Toast, { ToastType } from './components/Toast';
 import InstallPrompt from './components/InstallPrompt';
 import DragOverlay from './components/DragOverlay';
+import ClockGame, { generateClockPuzzle } from './components/ClockGame';
 
 type Screen = 'main' | 'game';
 
@@ -68,6 +70,12 @@ const App: React.FC = () => {
   // Drag state
   const [draggedToken, setDraggedToken] = useState<Token | null>(null);
 
+  // Clock game state (Level 4)
+  const [clockPuzzle, setClockPuzzle] = useState<ClockPuzzle | null>(null);
+  const [clockHintsUsed, setClockHintsUsed] = useState(0);
+  const [clockWrongAttempts, setClockWrongAttempts] = useState(0);
+  const [currentLevelId, setCurrentLevelId] = useState<LevelId>(1);
+
   // Reload progress when coming back to main screen
   useEffect(() => {
     if (screen === 'main') {
@@ -82,29 +90,48 @@ const App: React.FC = () => {
 
   // Start a new game for selected level
   const startLevel = useCallback((levelId: LevelId) => {
-    const newPuzzle = generatePuzzle(levelId);
-    setPuzzle(newPuzzle);
+    setCurrentLevelId(levelId);
     setTaskNumber(1);
-    setSelectedTokenId(null);
-    setPlacedValues(new Map());
     setShowResult(false);
     setResult(null);
     setScreen('game');
     saveLastLevel(levelId);
+
+    if (levelId === 4) {
+      // Clock game
+      setClockPuzzle(generateClockPuzzle());
+      setClockHintsUsed(0);
+      setClockWrongAttempts(0);
+      setPuzzle(null);
+    } else {
+      // Pyramid game
+      const newPuzzle = generatePuzzle(levelId);
+      setPuzzle(newPuzzle);
+      setSelectedTokenId(null);
+      setPlacedValues(new Map());
+      setClockPuzzle(null);
+    }
   }, []);
 
   // Generate a new puzzle for current level
   const generateNewPuzzle = useCallback(() => {
-    if (!puzzle) return;
-
-    const newPuzzle = generatePuzzle(puzzle.levelId);
-    setPuzzle(newPuzzle);
     setTaskNumber((prev) => prev + 1);
-    setSelectedTokenId(null);
-    setPlacedValues(new Map());
     setShowResult(false);
     setResult(null);
-  }, [puzzle]);
+
+    if (currentLevelId === 4) {
+      // Clock game
+      setClockPuzzle(generateClockPuzzle());
+      setClockHintsUsed(0);
+      setClockWrongAttempts(0);
+    } else if (puzzle) {
+      // Pyramid game (levelId is guaranteed to be 1, 2, or 3 here)
+      const newPuzzle = generatePuzzle(puzzle.levelId as 1 | 2 | 3);
+      setPuzzle(newPuzzle);
+      setSelectedTokenId(null);
+      setPlacedValues(new Map());
+    }
+  }, [puzzle, currentLevelId]);
 
   // Handle token selection (for tap-to-place mode)
   const handleTokenSelect = useCallback((token: Token) => {
@@ -552,10 +579,47 @@ const App: React.FC = () => {
     }
   }, [puzzle, showToast, handlePuzzleSolved]);
 
+  // Clock game handlers
+  const handleClockCorrect = useCallback(() => {
+    const currentStreak = progress.levelStats[4].currentStreak;
+    const puzzleResult = calculateResult(clockHintsUsed, clockWrongAttempts, currentStreak);
+
+    const { progress: updatedProgress, newAchievements: achievements } =
+      updateProgress(4, puzzleResult);
+
+    setProgress(updatedProgress);
+    setResult(puzzleResult);
+    setNewAchievements(achievements);
+    setShowResult(true);
+
+    if (puzzleResult.streakBonus > 0) {
+      setTimeout(() => {
+        showToast('Бонус за серию: +1 звезда!', 'achievement');
+      }, 500);
+    }
+
+    if (achievements.length > 0) {
+      setTimeout(() => {
+        showToast(`Достижение: ${achievements[0].title}!`, 'achievement');
+      }, 1000);
+    }
+  }, [progress, clockHintsUsed, clockWrongAttempts, showToast]);
+
+  const handleClockWrong = useCallback(() => {
+    setClockWrongAttempts((prev) => prev + 1);
+    showToast('Попробуй ещё раз!', 'error');
+  }, [showToast]);
+
+  const handleClockHint = useCallback(() => {
+    setClockHintsUsed((prev) => prev + 1);
+    showToast('Подсказка использована!', 'info');
+  }, [showToast]);
+
   // Go back to main screen
   const goBack = useCallback(() => {
     setScreen('main');
     setPuzzle(null);
+    setClockPuzzle(null);
     setShowResult(false);
   }, []);
 
@@ -610,6 +674,35 @@ const App: React.FC = () => {
 
   // Render game screen
   const renderGameScreen = () => {
+    // Level 4: Clock game
+    if (currentLevelId === 4 && clockPuzzle) {
+      const currentStreak = progress.levelStats[4].currentStreak;
+
+      return (
+        <div className="min-h-screen bg-gradient-to-b from-game-bg to-orange-100 flex flex-col">
+          {/* Header */}
+          <Header
+            levelId={4}
+            taskNumber={taskNumber}
+            currentStreak={currentStreak}
+            onBack={goBack}
+          />
+
+          {/* Main game area */}
+          <div className="flex-1 flex flex-col items-center justify-center p-4">
+            <ClockGame
+              puzzle={clockPuzzle}
+              onCorrect={handleClockCorrect}
+              onWrong={handleClockWrong}
+              onHint={handleClockHint}
+              hintsUsed={clockHintsUsed}
+            />
+          </div>
+        </div>
+      );
+    }
+
+    // Levels 1-3: Pyramid game
     if (!puzzle) return null;
 
     const currentStreak = progress.levelStats[puzzle.levelId].currentStreak;

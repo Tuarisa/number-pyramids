@@ -9,7 +9,7 @@
  */
 
 import React from 'react';
-import { LevelId, LEVEL_CONFIGS, Progress } from '../logic/types';
+import { LevelId, LEVEL_CONFIGS, LEVEL4_INFO, Progress } from '../logic/types';
 
 interface LevelSelectorProps {
   progress: Progress;
@@ -18,6 +18,10 @@ interface LevelSelectorProps {
 
 interface LevelButtonProps {
   levelId: LevelId;
+  name: string;
+  description: string;
+  icon: string;
+  colorClasses: string;
   solvedCount: number;
   bestStreak: number;
   onClick: () => void;
@@ -30,6 +34,7 @@ const LEVEL_ICONS: Record<LevelId, string> = {
   1: '📏',
   2: '🔺',
   3: '🏔️',
+  4: '🕐',
 };
 
 /**
@@ -39,21 +44,21 @@ const LEVEL_COLORS: Record<LevelId, string> = {
   1: 'from-green-400 to-green-600 hover:from-green-500 hover:to-green-700',
   2: 'from-blue-400 to-blue-600 hover:from-blue-500 hover:to-blue-700',
   3: 'from-purple-400 to-purple-600 hover:from-purple-500 hover:to-purple-700',
+  4: 'from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600',
 };
 
 /**
  * Single level button component
  */
 const LevelButton: React.FC<LevelButtonProps> = ({
-  levelId,
+  name,
+  description,
+  icon,
+  colorClasses,
   solvedCount,
   bestStreak,
   onClick,
 }) => {
-  const config = LEVEL_CONFIGS[levelId];
-  const icon = LEVEL_ICONS[levelId];
-  const colorClasses = LEVEL_COLORS[levelId];
-
   return (
     <button
       onClick={onClick}
@@ -72,8 +77,8 @@ const LevelButton: React.FC<LevelButtonProps> = ({
       <div className="flex items-center gap-3 w-full">
         <span className="text-3xl sm:text-4xl">{icon}</span>
         <div className="flex-1 text-left">
-          <h3 className="text-lg sm:text-xl font-bold">{config.name}</h3>
-          <p className="text-sm opacity-90">{config.description}</p>
+          <h3 className="text-lg sm:text-xl font-bold">{name}</h3>
+          <p className="text-sm opacity-90">{description}</p>
         </div>
       </div>
 
@@ -85,6 +90,17 @@ const LevelButton: React.FC<LevelButtonProps> = ({
     </button>
   );
 };
+
+/**
+ * Get level info (name, description) for any level
+ */
+function getLevelInfo(levelId: LevelId): { name: string; description: string } {
+  if (levelId === 4) {
+    return { name: LEVEL4_INFO.name, description: LEVEL4_INFO.description };
+  }
+  const config = LEVEL_CONFIGS[levelId];
+  return { name: config.name, description: config.description };
+}
 
 /**
  * Level selector container
@@ -99,15 +115,22 @@ const LevelSelector: React.FC<LevelSelectorProps> = ({
         Выбери уровень
       </h2>
 
-      {([1, 2, 3] as LevelId[]).map((levelId) => (
-        <LevelButton
-          key={levelId}
-          levelId={levelId}
-          solvedCount={progress.levelStats[levelId].solved}
-          bestStreak={progress.levelStats[levelId].bestStreak}
-          onClick={() => onSelectLevel(levelId)}
-        />
-      ))}
+      {([1, 2, 3, 4] as LevelId[]).map((levelId) => {
+        const { name, description } = getLevelInfo(levelId);
+        return (
+          <LevelButton
+            key={levelId}
+            levelId={levelId}
+            name={name}
+            description={description}
+            icon={LEVEL_ICONS[levelId]}
+            colorClasses={LEVEL_COLORS[levelId]}
+            solvedCount={progress.levelStats[levelId].solved}
+            bestStreak={progress.levelStats[levelId].bestStreak}
+            onClick={() => onSelectLevel(levelId)}
+          />
+        );
+      })}
     </div>
   );
 };
