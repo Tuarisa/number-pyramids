@@ -297,7 +297,7 @@ const ClockGame: React.FC<ClockGameProps> = ({
               flex items-center justify-center gap-2
               ${showCorrect
                 ? 'bg-gradient-to-r from-green-500 to-emerald-500'
-                : 'bg-gradient-to-r from-primary-500 to-primary-600'
+                : 'bg-gradient-to-r from-cyan-400 to-teal-500'
               }
               shadow-lg hover:shadow-xl
               hover:scale-[1.02] active:scale-[0.98]
