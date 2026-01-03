@@ -30,6 +30,8 @@ const TimePicker: React.FC<TimePickerProps> = ({
   // Constants
   const ITEM_HEIGHT = 48; // h-12 in Tailwind = 48px
   const CENTER_OFFSET = ITEM_HEIGHT * 2; // Offset to center item (2 items above center)
+  const VISIBLE_ITEMS = 5; // Show 5 items (2 above, 1 center, 2 below)
+  const CUT_OFFSET = ITEM_HEIGHT / 2; // Half item height for top/bottom cut
   
   // Create extended lists for infinite scroll (5 copies)
   const extendedHourOptions = [
@@ -227,19 +229,21 @@ const TimePicker: React.FC<TimePickerProps> = ({
   return (
     <div className="flex items-center justify-center gap-4">
       {/* Hours picker */}
-      <div className="relative">
-        {/* Gradient masks for fade effect */}
-        <div className="absolute top-0 left-0 right-0 h-6 bg-gradient-to-b from-game-bg/80 to-transparent pointer-events-none z-20"></div>
-        <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-game-bg/80 to-transparent pointer-events-none z-20"></div>
-        
+      <div className="relative overflow-hidden" style={{ height: `${VISIBLE_ITEMS * ITEM_HEIGHT - CUT_OFFSET * 2}px` }}>
         <div className="absolute inset-0 flex items-center pointer-events-none z-10">
           <div className="w-full h-12 border-t-2 border-b-2 border-primary-500 rounded"></div>
         </div>
         <div
           ref={hoursRef}
-          className="w-20 h-36 overflow-y-scroll hide-scrollbar snap-y snap-mandatory"
+          className="w-20 overflow-y-scroll hide-scrollbar snap-y snap-mandatory"
+          style={{ 
+            height: `${VISIBLE_ITEMS * ITEM_HEIGHT}px`,
+            marginTop: `-${CUT_OFFSET}px`,
+            marginBottom: `-${CUT_OFFSET}px`,
+            scrollbarWidth: 'none', 
+            msOverflowStyle: 'none' 
+          }}
           onScroll={() => handleScroll('hours')}
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           <div className="flex flex-col">
             {extendedHourOptions.map((hour, index) => (
@@ -260,19 +264,21 @@ const TimePicker: React.FC<TimePickerProps> = ({
       <span className="text-3xl font-bold text-primary-500">:</span>
       
       {/* Minutes picker */}
-      <div className="relative">
-        {/* Gradient masks for fade effect */}
-        <div className="absolute top-0 left-0 right-0 h-6 bg-gradient-to-b from-game-bg/80 to-transparent pointer-events-none z-20"></div>
-        <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-game-bg/80 to-transparent pointer-events-none z-20"></div>
-        
+      <div className="relative overflow-hidden" style={{ height: `${VISIBLE_ITEMS * ITEM_HEIGHT - CUT_OFFSET * 2}px` }}>
         <div className="absolute inset-0 flex items-center pointer-events-none z-10">
           <div className="w-full h-12 border-t-2 border-b-2 border-primary-500 rounded"></div>
         </div>
         <div
           ref={minutesRef}
-          className="w-20 h-36 overflow-y-scroll hide-scrollbar snap-y snap-mandatory"
+          className="w-20 overflow-y-scroll hide-scrollbar snap-y snap-mandatory"
+          style={{ 
+            height: `${VISIBLE_ITEMS * ITEM_HEIGHT}px`,
+            marginTop: `-${CUT_OFFSET}px`,
+            marginBottom: `-${CUT_OFFSET}px`,
+            scrollbarWidth: 'none', 
+            msOverflowStyle: 'none' 
+          }}
           onScroll={() => handleScroll('minutes')}
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           <div className="flex flex-col">
             {extendedMinuteOptions.map((minute, index) => (
