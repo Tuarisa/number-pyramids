@@ -35,8 +35,9 @@ import Toast, { ToastType } from './components/Toast';
 import InstallPrompt from './components/InstallPrompt';
 import DragOverlay from './components/DragOverlay';
 import ClockGame, { generateClockPuzzle } from './components/ClockGame';
+import ClockTutorial from './components/ClockTutorial';
 
-type Screen = 'main' | 'game';
+type Screen = 'main' | 'game' | 'tutorial';
 
 interface ToastState {
   message: string;
@@ -86,6 +87,11 @@ const App: React.FC = () => {
   // Show toast message
   const showToast = useCallback((message: string, type: ToastType) => {
     setToast({ message, type, key: Date.now() });
+  }, []);
+
+  // Start tutorial
+  const startTutorial = useCallback(() => {
+    setScreen('tutorial');
   }, []);
 
   // Start a new game for selected level
@@ -647,6 +653,27 @@ const App: React.FC = () => {
           <LevelSelector progress={progress} onSelectLevel={startLevel} />
         </div>
 
+        {/* Tutorial button */}
+        <div className="mb-6">
+          <button
+            onClick={startTutorial}
+            className="
+              w-full max-w-md mx-auto
+              py-4 px-6
+              rounded-xl
+              bg-gradient-to-r from-cyan-400 to-teal-500
+              text-white font-bold text-lg
+              shadow-lg hover:shadow-xl
+              transition-all duration-200
+              hover:scale-[1.02] active:scale-[0.98]
+              flex items-center justify-center gap-3
+            "
+          >
+            <span className="text-2xl">📚</span>
+            <span>Урок: Как определять время</span>
+          </button>
+        </div>
+
         {/* Achievements button */}
         <button
           onClick={() => setShowAchievements(true)}
@@ -767,9 +794,22 @@ const App: React.FC = () => {
     );
   };
 
+  // Render tutorial screen
+  const renderTutorialScreen = () => {
+    return (
+      <ClockTutorial
+        onComplete={() => {
+          // After tutorial, start level 4
+          startLevel(4);
+        }}
+        onBack={() => setScreen('main')}
+      />
+    );
+  };
+
   return (
     <>
-      {screen === 'main' ? renderMainScreen() : renderGameScreen()}
+      {screen === 'main' ? renderMainScreen() : screen === 'tutorial' ? renderTutorialScreen() : renderGameScreen()}
 
       {/* Modals */}
       {showAchievements && (
