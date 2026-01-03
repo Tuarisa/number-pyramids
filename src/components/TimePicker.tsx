@@ -228,12 +228,16 @@ const TimePicker: React.FC<TimePickerProps> = ({
     <div className="flex items-center justify-center gap-4">
       {/* Hours picker */}
       <div className="relative">
+        {/* Gradient masks for fade effect */}
+        <div className="absolute top-0 left-0 right-0 h-6 bg-gradient-to-b from-game-bg/80 to-transparent pointer-events-none z-20"></div>
+        <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-game-bg/80 to-transparent pointer-events-none z-20"></div>
+        
         <div className="absolute inset-0 flex items-center pointer-events-none z-10">
           <div className="w-full h-12 border-t-2 border-b-2 border-primary-500 rounded"></div>
         </div>
         <div
           ref={hoursRef}
-          className="w-20 h-60 overflow-y-scroll hide-scrollbar snap-y snap-mandatory"
+          className="w-20 h-36 overflow-y-scroll hide-scrollbar snap-y snap-mandatory"
           onScroll={() => handleScroll('hours')}
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
@@ -257,12 +261,16 @@ const TimePicker: React.FC<TimePickerProps> = ({
       
       {/* Minutes picker */}
       <div className="relative">
+        {/* Gradient masks for fade effect */}
+        <div className="absolute top-0 left-0 right-0 h-6 bg-gradient-to-b from-game-bg/80 to-transparent pointer-events-none z-20"></div>
+        <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-game-bg/80 to-transparent pointer-events-none z-20"></div>
+        
         <div className="absolute inset-0 flex items-center pointer-events-none z-10">
           <div className="w-full h-12 border-t-2 border-b-2 border-primary-500 rounded"></div>
         </div>
         <div
           ref={minutesRef}
-          className="w-20 h-60 overflow-y-scroll hide-scrollbar snap-y snap-mandatory"
+          className="w-20 h-36 overflow-y-scroll hide-scrollbar snap-y snap-mandatory"
           onScroll={() => handleScroll('minutes')}
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
