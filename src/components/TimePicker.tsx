@@ -27,6 +27,7 @@ const TimePicker: React.FC<TimePickerProps> = ({
   const minutesRef = useRef<HTMLDivElement>(null);
   const snapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isScrollingRef = useRef(false);
+  const isInitializedRef = useRef(false);
 
   // Generate base options
   const hourOptions = Array.from({ length: 12 }, (_, i) => i + 1);
@@ -61,6 +62,30 @@ const TimePicker: React.FC<TimePickerProps> = ({
   useEffect(() => {
     setHours(initialHours);
     setMinutes(initialMinutes);
+    // Reset initialization flag when values change
+    isInitializedRef.current = false;
+    
+    // Re-initialize scroll positions
+    setTimeout(() => {
+      if (hoursRef.current && minutesRef.current) {
+        const hoursIndex = hourOptions.indexOf(initialHours);
+        const minutesIndex = minuteOptions.indexOf(initialMinutes);
+        
+        if (hoursIndex !== -1 && minutesIndex !== -1) {
+          const hoursScroll = startOffset + (hoursIndex * itemHeight);
+          const minutesScroll = startOffset + (minutesIndex * itemHeight);
+          
+          hoursRef.current.scrollTop = hoursScroll;
+          minutesRef.current.scrollTop = minutesScroll;
+          
+          // Mark as initialized and notify parent
+          setTimeout(() => {
+            isInitializedRef.current = true;
+            onTimeChange(initialHours, initialMinutes);
+          }, 50);
+        }
+      }
+    }, 10);
   }, [initialHours, initialMinutes]);
 
   // Initialize scroll position to middle copy
@@ -105,41 +130,12 @@ const TimePicker: React.FC<TimePickerProps> = ({
         setHours(initialHours);
         setMinutes(initialMinutes);
         
-        // Notify parent immediately with correct values
-        onTimeChange(initialHours, initialMinutes);
-        
-        // Also trigger scroll handlers after a delay to ensure sync
+        // Mark as initialized after a small delay to ensure scroll is set
         setTimeout(() => {
-          if (hoursRef.current && minutesRef.current) {
-            // Re-read scroll positions to ensure they're set
-            const currentHoursScroll = hoursRef.current.scrollTop;
-            const currentMinutesScroll = minutesRef.current.scrollTop;
-            
-            // Calculate values from actual scroll positions
-            const hoursRelative = currentHoursScroll - startOffset;
-            const hoursIndexCalc = Math.round(hoursRelative / itemHeight);
-            let hoursNormalized = hoursIndexCalc % hourOptions.length;
-            if (hoursNormalized < 0) hoursNormalized += hourOptions.length;
-            const hoursValue = hourOptions[hoursNormalized];
-            
-            const minutesRelative = currentMinutesScroll - startOffset;
-            const minutesIndexCalc = Math.round(minutesRelative / itemHeight);
-            let minutesNormalized = minutesIndexCalc % minuteOptions.length;
-            if (minutesNormalized < 0) minutesNormalized += minuteOptions.length;
-            const minutesValue = minuteOptions[minutesNormalized];
-            
-            // Update if different
-            if (hoursValue !== initialHours) {
-              setHours(hoursValue);
-            }
-            if (minutesValue !== initialMinutes) {
-              setMinutes(minutesValue);
-            }
-            
-            // Notify parent with calculated values
-            onTimeChange(hoursValue, minutesValue);
-          }
-        }, 100);
+          isInitializedRef.current = true;
+          // Notify parent with correct values after initialization
+          onTimeChange(initialHours, initialMinutes);
+        }, 50);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -190,6 +186,23 @@ const TimePicker: React.FC<TimePickerProps> = ({
     }
   }, [singleListHeight, startOffset]);
 
+  // Helper function to calculate value from scroll position
+  const calculateValueFromScroll = useCallback((
+    scrollTop: number,
+    options: number[]
+  ): number => {
+    // Calculate which item is in the center (accounting for startOffset)
+    // The scrollTop should be in the middle copy range (startOffset ± singleListHeight)
+    const relativeScroll = scrollTop - startOffset;
+    const index = Math.round(relativeScroll / itemHeight);
+    // Normalize index to be within options range
+    let normalizedIndex = index % options.length;
+    if (normalizedIndex < 0) {
+      normalizedIndex += options.length;
+    }
+    return options[normalizedIndex];
+  }, [startOffset, itemHeight]);
+
   // Handle scroll and snap to nearest value
   const handleScroll = useCallback((
     ref: React.RefObject<HTMLDivElement>,
@@ -198,21 +211,13 @@ const TimePicker: React.FC<TimePickerProps> = ({
     setter: (value: number) => void,
     type: 'hours' | 'minutes'
   ) => {
-    if (!ref.current || disabled || isScrollingRef.current) return;
+    if (!ref.current || disabled || isScrollingRef.current || !isInitializedRef.current) return;
 
     // Get current scroll position
     const scrollTop = ref.current.scrollTop;
     
-    // Calculate which item is in the center (accounting for startOffset)
-    // Use modulo to handle cases where scrollTop might be outside expected range
-    const relativeScroll = scrollTop - startOffset;
-    const index = Math.round(relativeScroll / itemHeight);
-    // Normalize index to be within options range
-    let normalizedIndex = index % options.length;
-    if (normalizedIndex < 0) {
-      normalizedIndex += options.length;
-    }
-    const value = options[normalizedIndex];
+    // Calculate value using helper function
+    const value = calculateValueFromScroll(scrollTop, options);
 
     // Only update if value actually changed to avoid unnecessary re-renders
     setter((prevValue) => {
@@ -266,7 +271,7 @@ const TimePicker: React.FC<TimePickerProps> = ({
         }
       }
     }, 150);
-  }, [disabled, onTimeChange, handleInfiniteScroll, startOffset]);
+  }, [disabled, onTimeChange, handleInfiniteScroll, calculateValueFromScroll]);
 
   return (
     <div className="flex items-center gap-2">
