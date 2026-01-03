@@ -38,7 +38,7 @@ const ClockGame: React.FC<ClockGameProps> = ({
   hintsUsed,
 }) => {
   // For 'read' mode: user selected time
-  const [selectedHours, setSelectedHours] = useState(1);
+  const [selectedHours, setSelectedHours] = useState(12);
   const [selectedMinutes, setSelectedMinutes] = useState(0);
 
   // For 'set' mode: generate multiple clock options
@@ -101,7 +101,7 @@ const ClockGame: React.FC<ClockGameProps> = ({
 
   // Reset state when puzzle changes
   useEffect(() => {
-    setSelectedHours(1);
+    setSelectedHours(12);
     setSelectedMinutes(0);
     setSelectedOption(null);
     setShowCorrect(false);
