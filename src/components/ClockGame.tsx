@@ -175,7 +175,7 @@ const ClockGame: React.FC<ClockGameProps> = ({
       <div className="text-primary-600 text-lg sm:text-xl font-bold text-center">
         {puzzle.mode === 'read'
           ? 'Который час?'
-          : `Покажи ${formatTime(puzzle.hours, puzzle.minutes)}`}
+          : 'Покажи время на часах:'}
       </div>
 
       {/* Clock display */}

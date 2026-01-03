@@ -46,17 +46,11 @@ const ResultModal: React.FC<ResultModalProps> = ({
           <div className="mb-4">
             <p className="text-gray-600 mb-2">Получено звёзд:</p>
             <div className="flex justify-center gap-2">
-              {[1, 2, 3].map((star) => (
+              {Array.from({ length: result.starsEarned }, (_, index) => (
                 <span
-                  key={star}
-                  className={`
-                    text-4xl transition-all duration-500
-                    ${star <= result.starsEarned
-                      ? 'text-yellow-400 scale-110'
-                      : 'text-gray-200'
-                    }
-                  `}
-                  style={{ animationDelay: `${star * 0.2}s` }}
+                  key={index + 1}
+                  className="text-4xl text-yellow-400 scale-110 drop-shadow-lg transition-all duration-500"
+                  style={{ animationDelay: `${(index + 1) * 0.2}s` }}
                 >
                   ⭐
                 </span>
