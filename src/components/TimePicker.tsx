@@ -58,39 +58,19 @@ const TimePicker: React.FC<TimePickerProps> = ({
   const singleListHeight = hourOptions.length * itemHeight;
   const startOffset = singleListHeight * 3; // Start in the 4th copy (middle)
 
-  // Update state when initial values change
+  // Update state when initial values change (but don't reset scroll if already initialized)
   useEffect(() => {
-    setHours(initialHours);
-    setMinutes(initialMinutes);
-    // Reset initialization flag when values change
-    isInitializedRef.current = false;
-    
-    // Re-initialize scroll positions
-    setTimeout(() => {
-      if (hoursRef.current && minutesRef.current) {
-        const hoursIndex = hourOptions.indexOf(initialHours);
-        const minutesIndex = minuteOptions.indexOf(initialMinutes);
-        
-        if (hoursIndex !== -1 && minutesIndex !== -1) {
-          const hoursScroll = startOffset + (hoursIndex * itemHeight);
-          const minutesScroll = startOffset + (minutesIndex * itemHeight);
-          
-          hoursRef.current.scrollTop = hoursScroll;
-          minutesRef.current.scrollTop = minutesScroll;
-          
-          // Mark as initialized and notify parent
-          setTimeout(() => {
-            isInitializedRef.current = true;
-            onTimeChange(initialHours, initialMinutes);
-          }, 50);
-        }
-      }
-    }, 10);
-  }, [initialHours, initialMinutes]);
+    if (isInitializedRef.current) {
+      // Only update state if already initialized, don't reset scroll
+      setHours(initialHours);
+      setMinutes(initialMinutes);
+      onTimeChange(initialHours, initialMinutes);
+    }
+  }, [initialHours, initialMinutes, onTimeChange]);
 
-  // Initialize scroll position to middle copy
+  // Initialize scroll position to middle copy when hours/minutes change (only if initialized)
   useEffect(() => {
-    if (hoursRef.current && !isScrollingRef.current) {
+    if (hoursRef.current && !isScrollingRef.current && isInitializedRef.current) {
       const index = hourOptions.indexOf(hours);
       if (index !== -1) {
         const targetScroll = startOffset + (index * itemHeight);
@@ -101,7 +81,7 @@ const TimePicker: React.FC<TimePickerProps> = ({
   }, [hours]);
 
   useEffect(() => {
-    if (minutesRef.current && !isScrollingRef.current) {
+    if (minutesRef.current && !isScrollingRef.current && isInitializedRef.current) {
       const index = minuteOptions.indexOf(minutes);
       if (index !== -1) {
         const targetScroll = startOffset + (index * itemHeight);
@@ -113,7 +93,7 @@ const TimePicker: React.FC<TimePickerProps> = ({
 
   // Initial mount: set scroll position and notify parent
   useEffect(() => {
-    // Set initial scroll positions and values synchronously
+    // Set initial scroll positions FIRST, before setting state
     if (hoursRef.current && minutesRef.current) {
       const hoursIndex = hourOptions.indexOf(initialHours);
       const minutesIndex = minuteOptions.indexOf(initialMinutes);
@@ -122,19 +102,29 @@ const TimePicker: React.FC<TimePickerProps> = ({
         const hoursScroll = startOffset + (hoursIndex * itemHeight);
         const minutesScroll = startOffset + (minutesIndex * itemHeight);
         
-        // Set scroll positions
+        // Set scroll positions FIRST (before state to prevent useEffect conflicts)
         hoursRef.current.scrollTop = hoursScroll;
         minutesRef.current.scrollTop = minutesScroll;
         
-        // Set state values immediately
-        setHours(initialHours);
-        setMinutes(initialMinutes);
-        
-        // Mark as initialized after a small delay to ensure scroll is set
+        // Wait for scroll to be set, then set state and notify
         setTimeout(() => {
+          // Verify scroll positions are correct
+          const actualHoursScroll = hoursRef.current?.scrollTop || hoursScroll;
+          const actualMinutesScroll = minutesRef.current?.scrollTop || minutesScroll;
+          
+          // Calculate values from actual scroll positions
+          const actualHoursValue = calculateValueFromScroll(actualHoursScroll, hourOptions);
+          const actualMinutesValue = calculateValueFromScroll(actualMinutesScroll, minuteOptions);
+          
+          // Now set state with calculated values (which should match initialHours/Minutes)
+          setHours(actualHoursValue);
+          setMinutes(actualMinutesValue);
+          
+          // Mark as initialized
           isInitializedRef.current = true;
-          // Notify parent with correct values after initialization
-          onTimeChange(initialHours, initialMinutes);
+          
+          // Notify parent with correct values
+          onTimeChange(actualHoursValue, actualMinutesValue);
         }, 50);
       }
     }
