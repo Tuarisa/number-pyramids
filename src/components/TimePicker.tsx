@@ -24,7 +24,7 @@ const TimePicker: React.FC<TimePickerProps> = ({
   const [minutes, setMinutes] = useState(initialMinutes);
   const hoursRef = useRef<HTMLDivElement>(null);
   const minutesRef = useRef<HTMLDivElement>(null);
-  const snapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const snapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Generate options
   const hourOptions = Array.from({ length: 12 }, (_, i) => i + 1);
