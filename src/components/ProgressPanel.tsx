@@ -7,7 +7,7 @@
  */
 
 import React from 'react';
-import { Progress, LevelId, LEVEL_CONFIGS, LEVEL4_INFO } from '../logic/types';
+import { Progress, LevelId, LEVEL_CONFIGS, LEVEL4_INFO, LEVEL5_INFO } from '../logic/types';
 
 interface ProgressPanelProps {
   progress: Progress;
@@ -46,10 +46,12 @@ const ProgressPanel: React.FC<ProgressPanelProps> = ({ progress }) => {
         </h3>
 
         <div className="space-y-2">
-          {([1, 2, 3, 4] as LevelId[]).map((levelId) => {
+          {([1, 2, 3, 4, 5] as LevelId[]).map((levelId) => {
             const stats = progress.levelStats[levelId];
             const levelName = levelId === 4
               ? LEVEL4_INFO.name.split(':')[0]
+              : levelId === 5
+                ? LEVEL5_INFO.name
               : LEVEL_CONFIGS[levelId].name.split(':')[0];
 
             return (

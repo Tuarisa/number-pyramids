@@ -1,3 +1,5 @@
+import { CatDifficulty } from './cat/types';
+
 /**
  * Type definitions for Number Pyramids Trainer
  *
@@ -54,8 +56,9 @@ export interface Token {
  * Difficulty level identifiers
  * 1-3: Pyramid levels
  * 4: Clock time reading
+ * 5: Cat & Tree programming mode
  */
-export type LevelId = 1 | 2 | 3 | 4;
+export type LevelId = 1 | 2 | 3 | 4 | 5;
 
 /**
  * Level configuration for puzzle generation
@@ -154,6 +157,15 @@ export const LEVEL4_INFO = {
   description: 'Определи время по часам',
 };
 
+/**
+ * Level 5 info (Cat & Tree)
+ */
+export const LEVEL5_INFO = {
+  id: 5 as const,
+  name: 'Котик и ёлочка',
+  description: 'Составь программу и доведи котика до ёлочки',
+};
+
 // ============================================================================
 // GAME STATE
 // ============================================================================
@@ -205,6 +217,23 @@ export interface Achievement {
 }
 
 /**
+ * Cat mode per-level progress
+ */
+export interface CatLevelProgress {
+  solved: boolean;
+  bestSteps: number | null;
+}
+
+/**
+ * Cat mode progress snapshot
+ */
+export interface CatModeProgress {
+  lastDifficulty: CatDifficulty;
+  lastLevelId: string;
+  completed: Record<string, CatLevelProgress>;
+}
+
+/**
  * User progress stored in localStorage
  */
 export interface Progress {
@@ -214,6 +243,7 @@ export interface Progress {
   lastSelectedLevel: LevelId;
   tutorialShown: boolean;
   totalPuzzlesSolved: number;
+  catProgress: CatModeProgress;
 }
 
 /**
@@ -226,11 +256,17 @@ export const DEFAULT_PROGRESS: Progress = {
     2: { solved: 0, bestStreak: 0, currentStreak: 0 },
     3: { solved: 0, bestStreak: 0, currentStreak: 0 },
     4: { solved: 0, bestStreak: 0, currentStreak: 0 },
+    5: { solved: 0, bestStreak: 0, currentStreak: 0 },
   },
   unlockedAchievements: [],
   lastSelectedLevel: 1,
   tutorialShown: false,
   totalPuzzlesSolved: 0,
+  catProgress: {
+    lastDifficulty: 'basic',
+    lastLevelId: 'b1',
+    completed: {},
+  },
 };
 
 // ============================================================================

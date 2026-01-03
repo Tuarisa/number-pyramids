@@ -16,11 +16,14 @@ import {
   Achievement,
   Token,
   ClockPuzzle,
+  CatModeProgress,
 } from './logic/types';
 import { generatePuzzle, getHint, countEmptyCircles } from './logic/pyramids';
 import { isValueCorrect, isLineEquationValid } from './logic/validation';
 import { calculateResult, updateProgress, saveLastLevel } from './logic/progress';
 import { progressStorage } from './logic/storage';
+import CatGame from './components/cat/CatGame';
+import { CatRuntimeLevel } from './logic/cat/types';
 
 // Components
 import LevelSelector from './components/LevelSelector';
@@ -37,7 +40,7 @@ import DragOverlay from './components/DragOverlay';
 import ClockGame, { generateClockPuzzle } from './components/ClockGame';
 import ClockTutorial from './components/ClockTutorial';
 
-type Screen = 'main' | 'game' | 'tutorial';
+type Screen = 'main' | 'game' | 'tutorial' | 'cat';
 
 interface ToastState {
   message: string;
@@ -55,6 +58,7 @@ const App: React.FC = () => {
   // Game state
   const [puzzle, setPuzzle] = useState<PuzzleState | null>(null);
   const [taskNumber, setTaskNumber] = useState(1);
+  const [resultMode, setResultMode] = useState<'pyramid' | 'clock' | 'cat'>('pyramid');
 
   // UI state
   const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
@@ -76,6 +80,7 @@ const App: React.FC = () => {
   const [clockHintsUsed, setClockHintsUsed] = useState(0);
   const [clockWrongAttempts, setClockWrongAttempts] = useState(0);
   const [currentLevelId, setCurrentLevelId] = useState<LevelId>(1);
+  const [catNextSignal, setCatNextSignal] = useState(0);
 
   // Reload progress when coming back to main screen
   useEffect(() => {
@@ -89,6 +94,16 @@ const App: React.FC = () => {
     setToast({ message, type, key: Date.now() });
   }, []);
 
+  // Update only cat progress and persist
+  const patchCatProgress = useCallback((updater: (prev: CatModeProgress) => CatModeProgress) => {
+    setProgress((prev) => {
+      const nextCat = updater(prev.catProgress);
+      const next = { ...prev, catProgress: nextCat };
+      progressStorage.save(next);
+      return next;
+    });
+  }, []);
+
   // Start tutorial
   const startTutorial = useCallback(() => {
     setScreen('tutorial');
@@ -100,8 +115,15 @@ const App: React.FC = () => {
     setTaskNumber(1);
     setShowResult(false);
     setResult(null);
-    setScreen('game');
+    setResultMode(levelId === 4 ? 'clock' : levelId === 5 ? 'cat' : 'pyramid');
+    setScreen(levelId === 5 ? 'cat' : 'game');
     saveLastLevel(levelId);
+
+    if (levelId === 5) {
+      setClockPuzzle(null);
+      setPuzzle(null);
+      return;
+    }
 
     if (levelId === 4) {
       // Clock game
@@ -124,6 +146,10 @@ const App: React.FC = () => {
     setTaskNumber((prev) => prev + 1);
     setShowResult(false);
     setResult(null);
+
+    if (currentLevelId === 5) {
+      return;
+    }
 
     if (currentLevelId === 4) {
       // Clock game
@@ -504,6 +530,7 @@ const App: React.FC = () => {
     setResult(puzzleResult);
     setNewAchievements(achievements);
     setShowResult(true);
+    setResultMode('pyramid');
 
     // Show streak bonus toast
     if (puzzleResult.streakBonus > 0) {
@@ -621,6 +648,52 @@ const App: React.FC = () => {
     showToast('Подсказка использована!', 'info');
   }, [showToast]);
 
+  const handleCatSolved = useCallback(
+    ({ stepsUsed, wrongAttempts, level }: { stepsUsed: number; wrongAttempts: number; level: CatRuntimeLevel }) => {
+      const currentStreak = progress.levelStats[5].currentStreak;
+      const puzzleResult = calculateResult(0, wrongAttempts, currentStreak);
+
+      const { progress: updatedProgress, newAchievements: achievements } =
+        updateProgress(5, puzzleResult);
+
+      const prevCat = updatedProgress.catProgress ?? progress.catProgress;
+      const prevLevel = prevCat.completed[level.id];
+      const bestPrev = prevLevel?.bestSteps ?? null;
+      const better = bestPrev === null || stepsUsed < bestPrev;
+
+      const nextCatProgress = {
+        ...prevCat,
+        lastDifficulty: level.difficulty,
+        lastLevelId: level.id,
+        completed: {
+          ...prevCat.completed,
+          [level.id]: { solved: true, bestSteps: better ? stepsUsed : bestPrev },
+        },
+      };
+
+      const mergedProgress = { ...updatedProgress, catProgress: nextCatProgress };
+      progressStorage.save(mergedProgress);
+      setProgress(mergedProgress);
+      setResult(puzzleResult);
+      setNewAchievements(achievements);
+      setShowResult(true);
+      setResultMode('cat');
+
+      if (puzzleResult.streakBonus > 0) {
+        setTimeout(() => {
+          showToast('Бонус за серию: +1 звезда!', 'achievement');
+        }, 500);
+      }
+
+      if (achievements.length > 0) {
+        setTimeout(() => {
+          showToast(`Достижение: ${achievements[0].title}!`, 'achievement');
+        }, 1000);
+      }
+    },
+    [progress, showToast]
+  );
+
   // Go back to main screen
   const goBack = useCallback(() => {
     setScreen('main');
@@ -628,6 +701,16 @@ const App: React.FC = () => {
     setClockPuzzle(null);
     setShowResult(false);
   }, []);
+
+  const renderCatScreen = () => (
+    <CatGame
+      progress={progress}
+      onBack={goBack}
+      onSolved={handleCatSolved}
+      onCatProgressChange={patchCatProgress}
+      nextSignal={catNextSignal}
+    />
+  );
 
   // Render main screen
   const renderMainScreen = () => (
@@ -807,9 +890,25 @@ const App: React.FC = () => {
     );
   };
 
+  const handleNextAction = useCallback(() => {
+    setShowResult(false);
+    if (resultMode === 'cat') {
+      setCatNextSignal((prev) => prev + 1);
+      setScreen('cat');
+      return;
+    }
+    generateNewPuzzle();
+  }, [resultMode, generateNewPuzzle]);
+
   return (
     <>
-      {screen === 'main' ? renderMainScreen() : screen === 'tutorial' ? renderTutorialScreen() : renderGameScreen()}
+      {screen === 'main'
+        ? renderMainScreen()
+        : screen === 'tutorial'
+          ? renderTutorialScreen()
+          : screen === 'cat'
+            ? renderCatScreen()
+            : renderGameScreen()}
 
       {/* Modals */}
       {showAchievements && (
@@ -824,7 +923,7 @@ const App: React.FC = () => {
           result={result}
           totalStars={progress.totalStars}
           newAchievements={newAchievements}
-          onNextPuzzle={generateNewPuzzle}
+          onNextPuzzle={handleNextAction}
           onSelectLevel={goBack}
         />
       )}

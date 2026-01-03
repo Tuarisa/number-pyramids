@@ -9,7 +9,7 @@
  */
 
 import React from 'react';
-import { LevelId, LEVEL_CONFIGS, LEVEL4_INFO, Progress } from '../logic/types';
+import { LevelId, LEVEL_CONFIGS, LEVEL4_INFO, LEVEL5_INFO, Progress } from '../logic/types';
 
 interface LevelSelectorProps {
   progress: Progress;
@@ -35,6 +35,7 @@ const LEVEL_ICONS: Record<LevelId, string> = {
   2: '🔺',
   3: '🏔️',
   4: '🕐',
+  5: '🐱',
 };
 
 /**
@@ -45,6 +46,7 @@ const LEVEL_COLORS: Record<LevelId, string> = {
   2: 'from-blue-400 to-blue-600 hover:from-blue-500 hover:to-blue-700',
   3: 'from-purple-400 to-purple-600 hover:from-purple-500 hover:to-purple-700',
   4: 'from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600',
+  5: 'from-pink-400 to-rose-500 hover:from-pink-500 hover:to-rose-600',
 };
 
 /**
@@ -98,6 +100,9 @@ function getLevelInfo(levelId: LevelId): { name: string; description: string } {
   if (levelId === 4) {
     return { name: LEVEL4_INFO.name, description: LEVEL4_INFO.description };
   }
+  if (levelId === 5) {
+    return { name: LEVEL5_INFO.name, description: LEVEL5_INFO.description };
+  }
   const config = LEVEL_CONFIGS[levelId];
   return { name: config.name, description: config.description };
 }
@@ -115,7 +120,7 @@ const LevelSelector: React.FC<LevelSelectorProps> = ({
         Выбери уровень
       </h2>
 
-      {([1, 2, 3, 4] as LevelId[]).map((levelId) => {
+      {([1, 2, 3, 4, 5] as LevelId[]).map((levelId) => {
         const { name, description } = getLevelInfo(levelId);
         return (
           <LevelButton

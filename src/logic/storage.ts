@@ -78,6 +78,10 @@ export const progressStorage = {
         ...DEFAULT_PROGRESS.levelStats,
         ...saved.levelStats,
       },
+      catProgress: {
+        ...DEFAULT_PROGRESS.catProgress,
+        ...(saved.catProgress ?? {}),
+      },
     };
   },
 

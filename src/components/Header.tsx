@@ -8,7 +8,7 @@
  */
 
 import React from 'react';
-import { LevelId, LEVEL_CONFIGS, LEVEL4_INFO } from '../logic/types';
+import { LevelId, LEVEL_CONFIGS, LEVEL4_INFO, LEVEL5_INFO } from '../logic/types';
 
 interface HeaderProps {
   levelId: LevelId;
@@ -23,7 +23,11 @@ const Header: React.FC<HeaderProps> = ({
   currentStreak,
   onBack,
 }) => {
-  const levelName = levelId === 4 ? LEVEL4_INFO.name : LEVEL_CONFIGS[levelId].name;
+  const levelName = levelId === 4
+    ? LEVEL4_INFO.name
+    : levelId === 5
+      ? LEVEL5_INFO.name
+      : LEVEL_CONFIGS[levelId].name;
 
   return (
     <header className="bg-white/90 backdrop-blur-sm shadow-md px-4 py-3 sticky top-0 z-40">
