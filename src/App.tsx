@@ -695,6 +695,7 @@ const App: React.FC = () => {
               onCorrect={handleClockCorrect}
               onWrong={handleClockWrong}
               onHint={handleClockHint}
+              onNewPuzzle={generateNewPuzzle}
               hintsUsed={clockHintsUsed}
             />
           </div>

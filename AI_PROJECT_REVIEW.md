@@ -217,6 +217,11 @@ DEFAULT_PROGRESS = {
   - **Read Mode**: Replaced text inputs with iOS-style picker wheels (TimePicker component)
   - **Set Mode**: Replaced drag-to-set hands with multiple choice selection (2x2 grid of clock options)
   - Better mobile experience, no text input or drag interactions required
+- **1.4.0** - UI Consistency & Style Guide:
+  - Created `STYLE_GUIDE.md` with unified button styles and UI guidelines
+  - Updated ClockGame buttons to match Controls component style
+  - Added "Новая задача" button to ClockGame (was missing)
+  - All buttons now use consistent gradients, icons, and animations
 
 ---
 
@@ -252,9 +257,22 @@ When making changes, these are the key files to understand:
 | `src/logic/pyramids.ts` | Puzzle generation for Levels 1-3 |
 | `src/components/ClockGame.tsx` | Level 4 game logic and generation |
 | `src/components/TimePicker.tsx` | iOS-style time picker wheels for Level 4 read mode |
+| `src/components/Controls.tsx` | Reusable control buttons (hint, new puzzle) |
 | `src/App.tsx` | Main state management and game flow |
 | `src/logic/progress.ts` | Star calculation and progress updates |
 | `src/logic/validation.ts` | Answer checking logic |
+| `STYLE_GUIDE.md` | **UI Style Guide** - единый стиль для всех кнопок и UI элементов |
+
+## Style Guide
+
+**ВАЖНО**: При создании или изменении UI элементов (особенно кнопок) обязательно следуйте `STYLE_GUIDE.md` для единообразия дизайна.
+
+Основные принципы:
+- Все кнопки используют градиенты и единые стили
+- Кнопка "Подсказка": `from-amber-400 to-orange-400`
+- Кнопка "Новая задача": `from-blue-400 to-indigo-500`
+- Кнопка "Проверить": `bg-primary-500` или `bg-green-500` (при успехе)
+- Все кнопки имеют иконки (эмодзи) и единые анимации
 
 ---
 
