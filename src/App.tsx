@@ -455,9 +455,13 @@ const App: React.FC = () => {
 
   // Handle puzzle completion
   const handlePuzzleSolved = useCallback((solvedPuzzle: PuzzleState) => {
+    // Get current streak before this puzzle (for streak bonus calculation)
+    const currentStreak = progress.levelStats[solvedPuzzle.levelId].currentStreak;
+
     const puzzleResult = calculateResult(
       solvedPuzzle.hintsUsed,
-      solvedPuzzle.wrongAttempts
+      solvedPuzzle.wrongAttempts,
+      currentStreak
     );
 
     const { progress: updatedProgress, newAchievements: achievements } =
@@ -468,13 +472,20 @@ const App: React.FC = () => {
     setNewAchievements(achievements);
     setShowResult(true);
 
+    // Show streak bonus toast
+    if (puzzleResult.streakBonus > 0) {
+      setTimeout(() => {
+        showToast('Бонус за серию: +1 звезда!', 'achievement');
+      }, 500);
+    }
+
     // Show achievement toast
     if (achievements.length > 0) {
       setTimeout(() => {
         showToast(`Достижение: ${achievements[0].title}!`, 'achievement');
       }, 1000);
     }
-  }, [showToast]);
+  }, [showToast, progress]);
 
   // Handle hint button
   const handleHint = useCallback(() => {

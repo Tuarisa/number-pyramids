@@ -143,9 +143,10 @@ export interface PuzzleState {
  * Result after solving a puzzle
  */
 export interface PuzzleResult {
-  starsEarned: number;   // 1 or 3
+  starsEarned: number;   // 1-4 stars (base 3, -1 per hint/wrong, min 1, +1 streak bonus)
   isPerfect: boolean;    // No hints, no wrong attempts
   message: string;       // Random praise in Russian
+  streakBonus: number;   // Bonus stars from streak (0 or 1)
 }
 
 // ============================================================================

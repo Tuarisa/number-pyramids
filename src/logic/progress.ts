@@ -2,8 +2,11 @@
  * Progress and Reward System
  *
  * Reward logic:
- * - Puzzle solved with NO hints and NO wrong attempts → 3 stars
- * - Puzzle solved with hints OR wrong attempts → 1 star
+ * - Base: 3 stars
+ * - Each hint used: -1 star
+ * - Each wrong attempt: -1 star
+ * - Minimum: 1 star
+ * - Streak bonus: +1 star for every 5 perfect solves in a row
  *
  * Achievements:
  * - Checked after each puzzle completion
@@ -23,22 +26,35 @@ import { progressStorage } from './storage';
 /**
  * Calculate reward for solving a puzzle
  *
- * TWEAK: Modify star rewards here
- * - PERFECT_REWARD: Stars for solving without any mistakes
- * - IMPERFECT_REWARD: Stars when hints/mistakes were used
+ * Stars = max(1, 3 - hints - wrongAttempts) + streakBonus
  */
-const PERFECT_REWARD = 3;
-const IMPERFECT_REWARD = 1;
+const BASE_STARS = 3;
+const MIN_STARS = 1;
+const STREAK_BONUS_INTERVAL = 5; // Bonus star every 5 perfect solves
 
 /**
  * Calculate puzzle result after solving
+ * @param currentStreak - streak BEFORE this puzzle (to calculate bonus)
  */
 export function calculateResult(
   hintsUsed: number,
-  wrongAttempts: number
+  wrongAttempts: number,
+  currentStreak: number = 0
 ): PuzzleResult {
   const isPerfect = hintsUsed === 0 && wrongAttempts === 0;
-  const starsEarned = isPerfect ? PERFECT_REWARD : IMPERFECT_REWARD;
+
+  // Base stars minus penalties
+  let starsEarned = Math.max(MIN_STARS, BASE_STARS - hintsUsed - wrongAttempts);
+
+  // Streak bonus: +1 star when completing a streak of 5 perfect solves
+  let streakBonus = 0;
+  if (isPerfect) {
+    const newStreak = currentStreak + 1;
+    if (newStreak > 0 && newStreak % STREAK_BONUS_INTERVAL === 0) {
+      streakBonus = 1;
+      starsEarned += streakBonus;
+    }
+  }
 
   // Random praise message
   const message = PRAISE_MESSAGES[
@@ -49,6 +65,7 @@ export function calculateResult(
     starsEarned,
     isPerfect,
     message,
+    streakBonus,
   };
 }
 
