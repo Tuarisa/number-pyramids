@@ -88,7 +88,7 @@ const TimePicker: React.FC<TimePickerProps> = ({
 
   // Initial mount: set scroll position and notify parent
   useEffect(() => {
-    // Set initial scroll positions synchronously
+    // Set initial scroll positions and values synchronously
     if (hoursRef.current && minutesRef.current) {
       const hoursIndex = hourOptions.indexOf(initialHours);
       const minutesIndex = minuteOptions.indexOf(initialMinutes);
@@ -97,18 +97,49 @@ const TimePicker: React.FC<TimePickerProps> = ({
         const hoursScroll = startOffset + (hoursIndex * itemHeight);
         const minutesScroll = startOffset + (minutesIndex * itemHeight);
         
+        // Set scroll positions
         hoursRef.current.scrollTop = hoursScroll;
         minutesRef.current.scrollTop = minutesScroll;
         
-        // Trigger scroll handlers to sync values
+        // Set state values immediately
+        setHours(initialHours);
+        setMinutes(initialMinutes);
+        
+        // Notify parent immediately with correct values
+        onTimeChange(initialHours, initialMinutes);
+        
+        // Also trigger scroll handlers after a delay to ensure sync
         setTimeout(() => {
-          if (hoursRef.current) {
-            handleScroll(hoursRef, hourOptions, extendedHourOptions, setHours, 'hours');
+          if (hoursRef.current && minutesRef.current) {
+            // Re-read scroll positions to ensure they're set
+            const currentHoursScroll = hoursRef.current.scrollTop;
+            const currentMinutesScroll = minutesRef.current.scrollTop;
+            
+            // Calculate values from actual scroll positions
+            const hoursRelative = currentHoursScroll - startOffset;
+            const hoursIndexCalc = Math.round(hoursRelative / itemHeight);
+            let hoursNormalized = hoursIndexCalc % hourOptions.length;
+            if (hoursNormalized < 0) hoursNormalized += hourOptions.length;
+            const hoursValue = hourOptions[hoursNormalized];
+            
+            const minutesRelative = currentMinutesScroll - startOffset;
+            const minutesIndexCalc = Math.round(minutesRelative / itemHeight);
+            let minutesNormalized = minutesIndexCalc % minuteOptions.length;
+            if (minutesNormalized < 0) minutesNormalized += minuteOptions.length;
+            const minutesValue = minuteOptions[minutesNormalized];
+            
+            // Update if different
+            if (hoursValue !== initialHours) {
+              setHours(hoursValue);
+            }
+            if (minutesValue !== initialMinutes) {
+              setMinutes(minutesValue);
+            }
+            
+            // Notify parent with calculated values
+            onTimeChange(hoursValue, minutesValue);
           }
-          if (minutesRef.current) {
-            handleScroll(minutesRef, minuteOptions, extendedMinuteOptions, setMinutes, 'minutes');
-          }
-        }, 50);
+        }, 100);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
