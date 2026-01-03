@@ -86,6 +86,34 @@ const TimePicker: React.FC<TimePickerProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [minutes]);
 
+  // Initial mount: set scroll position and notify parent
+  useEffect(() => {
+    // Set initial scroll positions synchronously
+    if (hoursRef.current && minutesRef.current) {
+      const hoursIndex = hourOptions.indexOf(initialHours);
+      const minutesIndex = minuteOptions.indexOf(initialMinutes);
+      
+      if (hoursIndex !== -1 && minutesIndex !== -1) {
+        const hoursScroll = startOffset + (hoursIndex * itemHeight);
+        const minutesScroll = startOffset + (minutesIndex * itemHeight);
+        
+        hoursRef.current.scrollTop = hoursScroll;
+        minutesRef.current.scrollTop = minutesScroll;
+        
+        // Trigger scroll handlers to sync values
+        setTimeout(() => {
+          if (hoursRef.current) {
+            handleScroll(hoursRef, hourOptions, extendedHourOptions, setHours, 'hours');
+          }
+          if (minutesRef.current) {
+            handleScroll(minutesRef, minuteOptions, extendedMinuteOptions, setMinutes, 'minutes');
+          }
+        }, 50);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
@@ -145,6 +173,7 @@ const TimePicker: React.FC<TimePickerProps> = ({
     const scrollTop = ref.current.scrollTop;
     
     // Calculate which item is in the center (accounting for startOffset)
+    // Use modulo to handle cases where scrollTop might be outside expected range
     const relativeScroll = scrollTop - startOffset;
     const index = Math.round(relativeScroll / itemHeight);
     // Normalize index to be within options range
@@ -154,7 +183,13 @@ const TimePicker: React.FC<TimePickerProps> = ({
     }
     const value = options[normalizedIndex];
 
-    setter(value);
+    // Only update if value actually changed to avoid unnecessary re-renders
+    setter((prevValue) => {
+      if (prevValue !== value) {
+        return value;
+      }
+      return prevValue;
+    });
     
     // Update the other value using current state
     if (type === 'hours') {
