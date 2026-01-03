@@ -30,6 +30,7 @@ src/
 ├── components/          # React components
 │   ├── AnalogClock.tsx     # SVG analog clock (Level 4)
 │   ├── ClockGame.tsx       # Clock time trainer game (Level 4)
+│   ├── TimePicker.tsx      # iOS-style time picker wheels (Level 4)
 │   ├── PyramidView.tsx     # Pyramid grid renderer (Levels 1-3)
 │   ├── TokenBank.tsx       # Draggable number tokens
 │   ├── DragOverlay.tsx     # Touch/mouse drag handling
@@ -79,14 +80,16 @@ src/
 ### Level 4: Analog Clock Time Reading
 - **Concept**: Learn to read analog clocks
 - **Two Modes**:
-  1. **Read Mode**: See clock hands → enter time digitally
-  2. **Set Mode**: See digital time → drag clock hands to match
+  1. **Read Mode**: See clock hands → select time using iOS-style picker wheels
+  2. **Set Mode**: See digital time → select correct clock from multiple options (2x2 grid)
 - **Features**:
   - Clock face shows only 12, 3, 6, 9 (main numbers)
   - Tick marks for all hour and 5-minute positions
   - Distinct hour hand (short, thick, dark) and minute hand (long, thin, lighter)
   - Times use 5-minute intervals (0, 5, 10, ..., 55)
-  - Interactive SVG with touch/mouse drag support
+  - **Read Mode**: TimePicker component with scrollable wheels for hours (1-12) and minutes (0-55)
+  - **Set Mode**: 4-5 clock options displayed in grid, user taps to select correct one
+  - Mobile-optimized interface (no text input, no drag interactions)
 
 ---
 
@@ -140,6 +143,7 @@ Unlocked based on milestones:
 - Random hour (1-12) and minute (0-55 in 5-min steps)
 - Random mode ('read' or 'set')
 - Hour hand position accounts for minute progression (e.g., 3:30 has hour hand between 3 and 4)
+- **Set Mode**: Generates 4-5 clock options (1 correct + 3-4 wrong), shuffled randomly
 
 ### Validation Logic
 - **Level 1**: Validates entire equation after all cells filled
@@ -149,6 +153,8 @@ Unlocked based on milestones:
   - Each cell must equal sum of two cells below
   - Uses `isValueCorrect()` function
 - **Level 4**: Exact match for time (hours and minutes)
+  - **Read Mode**: Compares selected hours/minutes from TimePicker with puzzle time
+  - **Set Mode**: Checks if selected clock option has `isCorrect: true` flag
 
 ### State Persistence
 - Uses `localStorage` for all progress data
@@ -207,6 +213,10 @@ DEFAULT_PROGRESS = {
 - **1.0.0** - Initial release with Levels 1-3
 - **1.1.0** - Bug fixes (token marking, hint delay, undo for Level 1)
 - **1.2.0** - Added Level 4 (Analog Clock Time Reading)
+- **1.3.0** - Improved Level 4 UX:
+  - **Read Mode**: Replaced text inputs with iOS-style picker wheels (TimePicker component)
+  - **Set Mode**: Replaced drag-to-set hands with multiple choice selection (2x2 grid of clock options)
+  - Better mobile experience, no text input or drag interactions required
 
 ---
 
@@ -241,11 +251,12 @@ When making changes, these are the key files to understand:
 | `src/logic/types.ts` | All TypeScript types, level configs, achievements |
 | `src/logic/pyramids.ts` | Puzzle generation for Levels 1-3 |
 | `src/components/ClockGame.tsx` | Level 4 game logic and generation |
+| `src/components/TimePicker.tsx` | iOS-style time picker wheels for Level 4 read mode |
 | `src/App.tsx` | Main state management and game flow |
 | `src/logic/progress.ts` | Star calculation and progress updates |
 | `src/logic/validation.ts` | Answer checking logic |
 
 ---
 
-*Last updated: January 2026*
+*Last updated: January 2026 (v1.3.0 - Level 4 UX improvements)*
 *Reviewed by: Claude AI Agent*

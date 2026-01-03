@@ -2,13 +2,14 @@
  * ClockGame Component
  *
  * Two game modes:
- * - 'read': User sees clock hands, enters time digitally
- * - 'set': User sees digital time, sets clock hands
+ * - 'read': User sees clock hands, selects time using picker wheels
+ * - 'set': User sees digital time, selects correct clock from multiple options
  */
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { ClockPuzzle, ClockMode } from '../logic/types';
 import AnalogClock from './AnalogClock';
+import TimePicker from './TimePicker';
 
 interface ClockGameProps {
   puzzle: ClockPuzzle;
@@ -34,62 +35,102 @@ const ClockGame: React.FC<ClockGameProps> = ({
   onHint,
   hintsUsed,
 }) => {
-  // For 'read' mode: user input state
-  const [inputHours, setInputHours] = useState('');
-  const [inputMinutes, setInputMinutes] = useState('');
+  // For 'read' mode: user selected time
+  const [selectedHours, setSelectedHours] = useState(1);
+  const [selectedMinutes, setSelectedMinutes] = useState(0);
 
-  // For 'set' mode: user-set clock hands
-  const [setHours, setSetHours] = useState(12);
-  const [setMinutes, setSetMinutes] = useState(0);
+  // For 'set' mode: generate multiple clock options
+  const [clockOptions, setClockOptions] = useState<Array<{ hours: number; minutes: number; isCorrect: boolean }>>([]);
+  const [selectedOption, setSelectedOption] = useState<number | null>(null);
 
   // Animation state
   const [showCorrect, setShowCorrect] = useState(false);
   const [showWrong, setShowWrong] = useState(false);
 
+  // Generate clock options for 'set' mode
+  useEffect(() => {
+    if (puzzle.mode === 'set') {
+      const options: Array<{ hours: number; minutes: number; isCorrect: boolean }> = [];
+      
+      // Add correct answer
+      options.push({
+        hours: puzzle.hours,
+        minutes: puzzle.minutes,
+        isCorrect: true,
+      });
+
+      // Generate 3 wrong options (total 4 with correct one)
+      const wrongOptions = 3;
+      const minuteOptions = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
+      
+      for (let i = 0; i < wrongOptions; i++) {
+        let wrongHours = puzzle.hours;
+        let wrongMinutes = puzzle.minutes;
+        
+        // Try to generate a different time
+        let attempts = 0;
+        while (
+          (wrongHours === puzzle.hours && wrongMinutes === puzzle.minutes) ||
+          options.some(opt => opt.hours === wrongHours && opt.minutes === wrongMinutes)
+        ) {
+          wrongHours = Math.floor(Math.random() * 12) + 1;
+          wrongMinutes = minuteOptions[Math.floor(Math.random() * minuteOptions.length)];
+          attempts++;
+          if (attempts > 20) break; // Prevent infinite loop
+        }
+        
+        options.push({
+          hours: wrongHours,
+          minutes: wrongMinutes,
+          isCorrect: false,
+        });
+      }
+
+      // Shuffle options
+      for (let i = options.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [options[i], options[j]] = [options[j], options[i]];
+      }
+
+      setClockOptions(options);
+      setSelectedOption(null);
+    }
+  }, [puzzle]);
+
   // Reset state when puzzle changes
   useEffect(() => {
-    setInputHours('');
-    setInputMinutes('');
-    setSetHours(12);
-    setSetMinutes(0);
+    setSelectedHours(1);
+    setSelectedMinutes(0);
+    setSelectedOption(null);
     setShowCorrect(false);
     setShowWrong(false);
   }, [puzzle]);
 
-  // Handle time input change for 'read' mode
-  const handleHoursChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value.replace(/\D/g, '').slice(0, 2);
-    setInputHours(val);
-  }, []);
-
-  const handleMinutesChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value.replace(/\D/g, '').slice(0, 2);
-    setInputMinutes(val);
-  }, []);
-
-  // Handle clock hand change for 'set' mode
+  // Handle time change from picker for 'read' mode
   const handleTimeChange = useCallback((hours: number, minutes: number) => {
-    setSetHours(hours);
-    setSetMinutes(minutes);
+    setSelectedHours(hours);
+    setSelectedMinutes(minutes);
   }, []);
+
+  // Handle clock option selection for 'set' mode
+  const handleOptionSelect = useCallback((index: number) => {
+    if (showCorrect || showWrong) return;
+    setSelectedOption(index);
+  }, [showCorrect, showWrong]);
 
   // Check answer
   const checkAnswer = useCallback(() => {
     let isCorrect = false;
 
     if (puzzle.mode === 'read') {
-      // User entered time, check against puzzle
-      const enteredHours = parseInt(inputHours, 10);
-      const enteredMinutes = parseInt(inputMinutes, 10) || 0;
-
+      // User selected time, check against puzzle
       isCorrect =
-        enteredHours === puzzle.hours &&
-        enteredMinutes === puzzle.minutes;
+        selectedHours === puzzle.hours &&
+        selectedMinutes === puzzle.minutes;
     } else {
-      // User set clock hands, check against puzzle
-      isCorrect =
-        setHours === puzzle.hours &&
-        setMinutes === puzzle.minutes;
+      // User selected clock option
+      if (selectedOption === null) return;
+      isCorrect = clockOptions[selectedOption]?.isCorrect || false;
     }
 
     if (isCorrect) {
@@ -104,19 +145,22 @@ const ClockGame: React.FC<ClockGameProps> = ({
       }, 500);
       onWrong();
     }
-  }, [puzzle, inputHours, inputMinutes, setHours, setMinutes, onCorrect, onWrong]);
+  }, [puzzle, selectedHours, selectedMinutes, selectedOption, clockOptions, onCorrect, onWrong]);
 
   // Handle hint
   const handleHint = useCallback(() => {
     if (puzzle.mode === 'read') {
-      // Show the hours
-      setInputHours(puzzle.hours.toString());
-    } else {
       // Set hours correctly
-      setSetHours(puzzle.hours);
+      setSelectedHours(puzzle.hours);
+    } else {
+      // Highlight correct option (find its index)
+      const correctIndex = clockOptions.findIndex(opt => opt.isCorrect);
+      if (correctIndex !== -1) {
+        setSelectedOption(correctIndex);
+      }
     }
     onHint();
-  }, [puzzle, onHint]);
+  }, [puzzle, clockOptions, onHint]);
 
   // Format time for display
   const formatTime = (h: number, m: number) => {
@@ -143,64 +187,74 @@ const ClockGame: React.FC<ClockGameProps> = ({
             showAnswer={showCorrect}
           />
         ) : (
-          // Show digital time, user sets clock
+          // Show digital time, user selects from options
           <>
-            <div className="text-5xl sm:text-6xl font-bold text-primary-700 mb-4 text-center">
+            <div className="text-5xl sm:text-6xl font-bold text-primary-700 mb-6 text-center">
               {formatTime(puzzle.hours, puzzle.minutes)}
             </div>
-            <AnalogClock
-              hours={setHours}
-              minutes={setMinutes}
-              interactive={true}
-              onTimeChange={handleTimeChange}
-              size={260}
-              showAnswer={showCorrect}
-            />
+            <div className="text-lg text-primary-600 mb-4 text-center">
+              Выбери правильные часы:
+            </div>
+            {/* Clock options grid */}
+            <div className="grid grid-cols-2 gap-4 max-w-md">
+              {clockOptions.map((option, index) => {
+                const isSelected = selectedOption === index;
+                const isCorrectOption = option.isCorrect;
+                const showAsCorrect = showCorrect && isCorrectOption;
+                const showAsWrong = showWrong && isSelected && !isCorrectOption;
+
+                return (
+                  <button
+                    key={index}
+                    onClick={() => handleOptionSelect(index)}
+                    disabled={showCorrect || showWrong}
+                    className={`
+                      relative p-2 rounded-xl transition-all duration-200
+                      ${isSelected
+                        ? showAsCorrect
+                          ? 'ring-4 ring-green-500 bg-green-50'
+                          : showAsWrong
+                          ? 'ring-4 ring-red-500 bg-red-50'
+                          : 'ring-4 ring-primary-500 bg-primary-50'
+                        : 'ring-2 ring-primary-200 bg-white hover:ring-primary-300'
+                      }
+                      ${showCorrect || showWrong ? 'cursor-default' : 'cursor-pointer active:scale-95'}
+                    `}
+                  >
+                    <AnalogClock
+                      hours={option.hours}
+                      minutes={option.minutes}
+                      size={120}
+                      showAnswer={showAsCorrect}
+                    />
+                    {isSelected && !showCorrect && !showWrong && (
+                      <div className="absolute -top-2 -right-2 w-6 h-6 bg-primary-500 rounded-full flex items-center justify-center">
+                        <span className="text-white text-xs">✓</span>
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </>
         )}
       </div>
 
-      {/* Input area for 'read' mode */}
+      {/* Time picker for 'read' mode */}
       {puzzle.mode === 'read' && (
-        <div className="flex items-center gap-2">
-          <input
-            type="text"
-            inputMode="numeric"
-            value={inputHours}
-            onChange={handleHoursChange}
-            placeholder="Ч"
-            className={`
-              w-16 h-16 text-center text-2xl font-bold
-              rounded-xl border-4
-              ${showWrong ? 'border-red-400 bg-red-50' : 'border-primary-300 bg-white'}
-              focus:outline-none focus:border-primary-500
-              transition-colors
-            `}
-            maxLength={2}
+        <div className="flex flex-col items-center gap-2">
+          <div className="text-lg text-primary-600 mb-2">
+            Выбери время:
+          </div>
+          <TimePicker
+            hours={selectedHours}
+            minutes={selectedMinutes}
+            onTimeChange={handleTimeChange}
+            disabled={showCorrect || showWrong}
           />
-          <span className="text-3xl font-bold text-primary-500">:</span>
-          <input
-            type="text"
-            inputMode="numeric"
-            value={inputMinutes}
-            onChange={handleMinutesChange}
-            placeholder="ММ"
-            className={`
-              w-20 h-16 text-center text-2xl font-bold
-              rounded-xl border-4
-              ${showWrong ? 'border-red-400 bg-red-50' : 'border-primary-300 bg-white'}
-              focus:outline-none focus:border-primary-500
-              transition-colors
-            `}
-            maxLength={2}
-          />
-        </div>
-      )}
-
-      {/* Current setting display for 'set' mode */}
-      {puzzle.mode === 'set' && (
-        <div className="text-2xl font-bold text-primary-600">
-          Твой ответ: {formatTime(setHours, setMinutes)}
+          <div className="text-xl font-bold text-primary-700 mt-2">
+            {formatTime(selectedHours, selectedMinutes)}
+          </div>
         </div>
       )}
 
@@ -222,7 +276,7 @@ const ClockGame: React.FC<ClockGameProps> = ({
 
         <button
           onClick={checkAnswer}
-          disabled={showCorrect || (puzzle.mode === 'read' && !inputHours)}
+          disabled={showCorrect || (puzzle.mode === 'set' && selectedOption === null)}
           className={`
             px-8 py-3 rounded-xl font-bold text-lg text-white
             transition-all duration-200
