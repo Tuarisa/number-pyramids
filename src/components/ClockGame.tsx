@@ -262,7 +262,7 @@ const ClockGame: React.FC<ClockGameProps> = ({
 
       {/* Action buttons */}
       <div className="flex flex-col gap-4 w-full max-w-md">
-        {/* Top row: Hint and New Puzzle */}
+        {/* Top row: Hint and Check */}
         <div className="flex justify-center gap-4 w-full">
           <button
             onClick={handleHint}
@@ -288,43 +288,44 @@ const ClockGame: React.FC<ClockGameProps> = ({
           </button>
 
           <button
-            onClick={onNewPuzzle}
-            className="
+            onClick={checkAnswer}
+            disabled={showCorrect || (puzzle.mode === 'set' && selectedOption === null)}
+            className={`
               flex-1 py-3 px-4
-              rounded-xl
-              bg-gradient-to-r from-blue-400 to-indigo-500
-              text-white font-bold text-base sm:text-lg
-              shadow-lg hover:shadow-xl
+              rounded-xl font-bold text-base sm:text-lg text-white
               transition-all duration-200
-              hover:scale-[1.02] active:scale-[0.98]
               flex items-center justify-center gap-2
-            "
-            aria-label="Новая задача"
+              ${showCorrect
+                ? 'bg-gradient-to-r from-green-500 to-emerald-500'
+                : 'bg-gradient-to-r from-primary-500 to-primary-600'
+              }
+              shadow-lg hover:shadow-xl
+              hover:scale-[1.02] active:scale-[0.98]
+              disabled:opacity-50 disabled:cursor-not-allowed
+            `}
+            aria-label={showCorrect ? 'Правильный ответ' : 'Проверить ответ'}
           >
-            <span className="text-xl">🔄</span>
-            <span>Новая задача</span>
+            {showCorrect ? '✓ Верно!' : 'Проверить'}
           </button>
         </div>
 
-        {/* Bottom: Check button */}
+        {/* Bottom: New Puzzle button */}
         <button
-          onClick={checkAnswer}
-          disabled={showCorrect || (puzzle.mode === 'set' && selectedOption === null)}
-          className={`
+          onClick={onNewPuzzle}
+          className="
             w-full py-3 px-4
-            rounded-xl font-bold text-base sm:text-lg text-white
-            transition-all duration-200
-            ${showCorrect
-              ? 'bg-green-500'
-              : 'bg-primary-500 hover:bg-primary-600 active:scale-95'
-            }
+            rounded-xl
+            bg-gradient-to-r from-blue-400 to-indigo-500
+            text-white font-bold text-base sm:text-lg
             shadow-lg hover:shadow-xl
+            transition-all duration-200
             hover:scale-[1.02] active:scale-[0.98]
-            disabled:opacity-50 disabled:cursor-not-allowed
-          `}
-          aria-label={showCorrect ? 'Правильный ответ' : 'Проверить ответ'}
+            flex items-center justify-center gap-2
+          "
+          aria-label="Новая задача"
         >
-          {showCorrect ? '✓ Верно!' : 'Проверить'}
+          <span className="text-xl">🔄</span>
+          <span>Новая задача</span>
         </button>
       </div>
     </div>
