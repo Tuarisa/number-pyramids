@@ -1,12 +1,11 @@
 /**
  * TimePicker Component
  * 
- * iOS-style time picker with scrollable wheels for hours and minutes
- * Creates infinite scroll effect by duplicating options 3 times above and below
- * Used for selecting time in clock reading mode
+ * iOS-style time picker with scrollable wheels
+ * Simple and reliable implementation
  */
 
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 
 interface TimePickerProps {
   hours: number; // 1-12
@@ -21,318 +20,264 @@ const TimePicker: React.FC<TimePickerProps> = ({
   onTimeChange,
   disabled = false,
 }) => {
-  const [hours, setHours] = useState(initialHours);
-  const [minutes, setMinutes] = useState(initialMinutes);
   const hoursRef = useRef<HTMLDivElement>(null);
   const minutesRef = useRef<HTMLDivElement>(null);
-  const snapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isScrollingRef = useRef(false);
-  const isInitializedRef = useRef(false);
-
-  // Generate base options
-  const hourOptions = Array.from({ length: 12 }, (_, i) => i + 1);
+  
+  // Base options
+  const hourOptions = Array.from({ length: 12 }, (_, i) => i + 1); // 1-12
   const minuteOptions = Array.from({ length: 12 }, (_, i) => i * 5); // 0, 5, 10, ..., 55
-
-  // Create extended lists: 3 copies above + original + 3 copies below = 7 copies total
+  
+  // Constants
+  const ITEM_HEIGHT = 48; // h-12 in Tailwind = 48px
+  const CENTER_OFFSET = ITEM_HEIGHT * 2; // Offset to center item (2 items above center)
+  
+  // Create extended lists for infinite scroll (5 copies)
   const extendedHourOptions = [
     ...hourOptions,
     ...hourOptions,
     ...hourOptions,
     ...hourOptions,
     ...hourOptions,
-    ...hourOptions,
-    ...hourOptions,
   ];
-
   const extendedMinuteOptions = [
     ...minuteOptions,
     ...minuteOptions,
     ...minuteOptions,
     ...minuteOptions,
     ...minuteOptions,
-    ...minuteOptions,
-    ...minuteOptions,
   ];
-
-  const itemHeight = 50;
-  const singleListHeight = hourOptions.length * itemHeight;
-  const startOffset = singleListHeight * 3; // Start in the 4th copy (middle)
-
-  // Update state when initial values change (but don't reset scroll if already initialized)
-  useEffect(() => {
-    if (isInitializedRef.current) {
-      // Only update state if already initialized, don't reset scroll
-      setHours(initialHours);
-      setMinutes(initialMinutes);
-      onTimeChange(initialHours, initialMinutes);
+  
+  // Calculate initial scroll position
+  // scrollTop positions the top item, but we want the center item to be at the value
+  const getInitialScrollTop = (value: number, options: number[]): number => {
+    const index = options.indexOf(value);
+    if (index === -1) {
+      const listLength = options.length;
+      const copyIndex = 2; // Middle copy
+      return (copyIndex * listLength) * ITEM_HEIGHT - CENTER_OFFSET;
     }
-  }, [initialHours, initialMinutes, onTimeChange]);
-
-  // Initialize scroll position to middle copy when hours/minutes change (only if initialized)
+    const listLength = options.length;
+    const copyIndex = 2; // Middle copy
+    const scrollTop = (copyIndex * listLength + index) * ITEM_HEIGHT - CENTER_OFFSET;
+    return scrollTop;
+  };
+  
+  // Calculate value from scroll position
+  // scrollTop is the position of the top item, but we need the center item
+  const getValueFromScroll = (scrollTop: number, options: number[]): number => {
+    const listLength = options.length;
+    const centerPosition = scrollTop + CENTER_OFFSET;
+    const index = Math.round(centerPosition / ITEM_HEIGHT);
+    const normalizedIndex = index % listLength;
+    return options[normalizedIndex];
+  };
+  
+  // Refs to track initialization and prevent unnecessary updates
+  const isInitializedRef = useRef(false);
+  const isScrollingRef = useRef(false);
+  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastPropsRef = useRef({ hours: initialHours, minutes: initialMinutes });
+  
+  // Initialize scroll positions on mount
   useEffect(() => {
-    if (hoursRef.current && !isScrollingRef.current && isInitializedRef.current) {
-      const index = hourOptions.indexOf(hours);
-      if (index !== -1) {
-        const targetScroll = startOffset + (index * itemHeight);
-        hoursRef.current.scrollTop = targetScroll;
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hours]);
-
-  useEffect(() => {
-    if (minutesRef.current && !isScrollingRef.current && isInitializedRef.current) {
-      const index = minuteOptions.indexOf(minutes);
-      if (index !== -1) {
-        const targetScroll = startOffset + (index * itemHeight);
-        minutesRef.current.scrollTop = targetScroll;
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [minutes]);
-
-  // Initial mount: set scroll position and notify parent
-  useEffect(() => {
-    // Set initial scroll positions FIRST, before setting state
-    if (hoursRef.current && minutesRef.current) {
-      const hoursIndex = hourOptions.indexOf(initialHours);
-      const minutesIndex = minuteOptions.indexOf(initialMinutes);
+    if (hoursRef.current && minutesRef.current && !isInitializedRef.current) {
+      isInitializedRef.current = true;
       
-      if (hoursIndex !== -1 && minutesIndex !== -1) {
-        const hoursScroll = startOffset + (hoursIndex * itemHeight);
-        const minutesScroll = startOffset + (minutesIndex * itemHeight);
+      const hoursScroll = getInitialScrollTop(initialHours, hourOptions);
+      const minutesScroll = getInitialScrollTop(initialMinutes, minuteOptions);
+      
+      // Temporarily disable snap to set position accurately
+      hoursRef.current.classList.remove('snap-y', 'snap-mandatory');
+      minutesRef.current.classList.remove('snap-y', 'snap-mandatory');
+      
+      // Set scroll position
+      hoursRef.current.scrollTop = hoursScroll;
+      minutesRef.current.scrollTop = minutesScroll;
+      
+      // Force reflow
+      void hoursRef.current.offsetHeight;
+      void minutesRef.current.offsetHeight;
+      
+      // Set again to ensure it sticks
+      hoursRef.current.scrollTop = hoursScroll;
+      minutesRef.current.scrollTop = minutesScroll;
+      
+      // Re-enable snap after a delay
+      setTimeout(() => {
+        if (hoursRef.current && minutesRef.current) {
+          // Verify position is still correct before enabling snap
+          const currentHours = getValueFromScroll(hoursRef.current.scrollTop, hourOptions);
+          const currentMinutes = getValueFromScroll(minutesRef.current.scrollTop, minuteOptions);
+          
+          // If position changed, fix it
+          if (currentHours !== initialHours || currentMinutes !== initialMinutes) {
+            hoursRef.current.scrollTop = hoursScroll;
+            minutesRef.current.scrollTop = minutesScroll;
+            void hoursRef.current.offsetHeight;
+            void minutesRef.current.offsetHeight;
+            hoursRef.current.scrollTop = hoursScroll;
+            minutesRef.current.scrollTop = minutesScroll;
+          }
+          
+          // Re-enable snap
+          hoursRef.current.classList.add('snap-y', 'snap-mandatory');
+          minutesRef.current.classList.add('snap-y', 'snap-mandatory');
+          
+          // Check after enabling snap and disable if it causes drift
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              if (hoursRef.current && minutesRef.current) {
+                const immediateHours = getValueFromScroll(hoursRef.current.scrollTop, hourOptions);
+                const immediateMinutes = getValueFromScroll(minutesRef.current.scrollTop, minuteOptions);
+                
+                // If snap changed position, disable snap permanently
+                if (immediateHours !== initialHours || immediateMinutes !== initialMinutes) {
+                  hoursRef.current.classList.remove('snap-y', 'snap-mandatory');
+                  minutesRef.current.classList.remove('snap-y', 'snap-mandatory');
+                  hoursRef.current.scrollTop = hoursScroll;
+                  minutesRef.current.scrollTop = minutesScroll;
+                }
+              }
+            });
+          });
+        }
+      }, 150);
+      
+      lastPropsRef.current = { hours: initialHours, minutes: initialMinutes };
+    }
+  }, []); // Only run once on mount
+  
+  // Update scroll when props change (new puzzle)
+  useEffect(() => {
+    if (isInitializedRef.current && hoursRef.current && minutesRef.current) {
+      // Only update if values actually changed (new puzzle)
+      if (initialHours !== lastPropsRef.current.hours || initialMinutes !== lastPropsRef.current.minutes) {
+        const hoursScroll = getInitialScrollTop(initialHours, hourOptions);
+        const minutesScroll = getInitialScrollTop(initialMinutes, minuteOptions);
         
-        // Set scroll positions FIRST (before state to prevent useEffect conflicts)
         hoursRef.current.scrollTop = hoursScroll;
         minutesRef.current.scrollTop = minutesScroll;
         
-        // Wait for scroll to be set, then set state and notify
-        setTimeout(() => {
-          // Verify scroll positions are correct
-          const actualHoursScroll = hoursRef.current?.scrollTop || hoursScroll;
-          const actualMinutesScroll = minutesRef.current?.scrollTop || minutesScroll;
-          
-          // Calculate values from actual scroll positions
-          const actualHoursValue = calculateValueFromScroll(actualHoursScroll, hourOptions);
-          const actualMinutesValue = calculateValueFromScroll(actualMinutesScroll, minuteOptions);
-          
-          // Now set state with calculated values (which should match initialHours/Minutes)
-          setHours(actualHoursValue);
-          setMinutes(actualMinutesValue);
-          
-          // Mark as initialized
-          isInitializedRef.current = true;
-          
-          // Notify parent with correct values
-          onTimeChange(actualHoursValue, actualMinutesValue);
-        }, 50);
+        lastPropsRef.current = { hours: initialHours, minutes: initialMinutes };
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (snapTimeoutRef.current) {
-        clearTimeout(snapTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  // Handle infinite scroll - jump to middle copy when near edges
-  const handleInfiniteScroll = useCallback((
-    ref: React.RefObject<HTMLDivElement>,
-    options: number[],
-    extendedOptions: number[]
-  ) => {
-    if (!ref.current || isScrollingRef.current) return;
-
+  }, [initialHours, initialMinutes]);
+  
+  // Handle infinite scroll - jump to middle when near edges
+  const handleInfiniteScroll = (ref: React.RefObject<HTMLDivElement>, options: number[]) => {
+    if (!ref.current || !isInitializedRef.current) return;
+    
     const scrollTop = ref.current.scrollTop;
-    const totalHeight = extendedOptions.length * itemHeight;
-    const threshold = singleListHeight * 1.5; // Threshold for jumping
+    const listLength = options.length;
+    const middleStart = listLength * ITEM_HEIGHT * 2; // Start of 3rd copy
     
-    // If scrolled too far up (into first 1.5 copies), jump to middle
-    if (scrollTop < threshold) {
-      isScrollingRef.current = true;
-      const currentIndex = Math.round(scrollTop / itemHeight) % options.length;
-      const newScroll = startOffset + (currentIndex * itemHeight);
-      // Use scrollTo without animation for instant jump
-      ref.current.scrollTop = newScroll;
+    // If scrolled too far up, jump to middle
+    if (scrollTop < listLength * ITEM_HEIGHT) {
+      const currentIndex = Math.round(scrollTop / ITEM_HEIGHT);
+      const normalizedIndex = currentIndex % listLength;
+      const newScrollTop = middleStart + normalizedIndex * ITEM_HEIGHT - CENTER_OFFSET;
+      ref.current.scrollTop = newScrollTop;
+    }
+    // If scrolled too far down, jump to middle
+    else if (scrollTop > listLength * ITEM_HEIGHT * 4) {
+      const currentIndex = Math.round(scrollTop / ITEM_HEIGHT);
+      const normalizedIndex = currentIndex % listLength;
+      const newScrollTop = middleStart + normalizedIndex * ITEM_HEIGHT - CENTER_OFFSET;
+      ref.current.scrollTop = newScrollTop;
+    }
+  };
+  
+  // Handle scroll event
+  const handleScroll = useCallback((type: 'hours' | 'minutes') => {
+    if (!isInitializedRef.current || disabled) return;
+    
+    const ref = type === 'hours' ? hoursRef : minutesRef;
+    const options = type === 'hours' ? hourOptions : minuteOptions;
+    
+    if (!ref.current) return;
+    
+    // Handle infinite scroll
+    handleInfiniteScroll(ref, options);
+    
+    // Mark as scrolling
+    isScrollingRef.current = true;
+    
+    // Clear previous timeout
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+    
+    // Notify parent after scroll ends (debounce)
+    scrollTimeoutRef.current = setTimeout(() => {
+      isScrollingRef.current = false;
+      
+      // Get final values from both pickers
+      const finalHoursScroll = hoursRef.current?.scrollTop ?? 0;
+      const finalMinutesScroll = minutesRef.current?.scrollTop ?? 0;
+      const finalHours = getValueFromScroll(finalHoursScroll, hourOptions);
+      const finalMinutes = getValueFromScroll(finalMinutesScroll, minuteOptions);
+      
+      // Notify parent asynchronously to avoid setState during render
       setTimeout(() => {
-        isScrollingRef.current = false;
-      }, 100);
-    }
-    // If scrolled too far down (into last 1.5 copies), jump to middle
-    else if (scrollTop > totalHeight - threshold) {
-      isScrollingRef.current = true;
-      const currentIndex = Math.round(scrollTop / itemHeight) % options.length;
-      const newScroll = startOffset + (currentIndex * itemHeight);
-      // Use scrollTo without animation for instant jump
-      ref.current.scrollTop = newScroll;
-      setTimeout(() => {
-        isScrollingRef.current = false;
-      }, 100);
-    }
-  }, [singleListHeight, startOffset]);
-
-  // Helper function to calculate value from scroll position
-  const calculateValueFromScroll = useCallback((
-    scrollTop: number,
-    options: number[]
-  ): number => {
-    // Calculate which item is in the center (accounting for startOffset)
-    // The scrollTop should be in the middle copy range (startOffset ± singleListHeight)
-    const relativeScroll = scrollTop - startOffset;
-    const index = Math.round(relativeScroll / itemHeight);
-    // Normalize index to be within options range
-    let normalizedIndex = index % options.length;
-    if (normalizedIndex < 0) {
-      normalizedIndex += options.length;
-    }
-    return options[normalizedIndex];
-  }, [startOffset, itemHeight]);
-
-  // Handle scroll and snap to nearest value
-  const handleScroll = useCallback((
-    ref: React.RefObject<HTMLDivElement>,
-    options: number[],
-    extendedOptions: number[],
-    setter: (value: number) => void,
-    type: 'hours' | 'minutes'
-  ) => {
-    if (!ref.current || disabled || isScrollingRef.current || !isInitializedRef.current) return;
-
-    // Get current scroll position
-    const scrollTop = ref.current.scrollTop;
-    
-    // Calculate value using helper function
-    const value = calculateValueFromScroll(scrollTop, options);
-
-    // Only update if value actually changed to avoid unnecessary re-renders
-    setter((prevValue) => {
-      if (prevValue !== value) {
-        return value;
-      }
-      return prevValue;
-    });
-    
-    // Update the other value using current state
-    if (type === 'hours') {
-      setMinutes((prevMinutes) => {
-        onTimeChange(value, prevMinutes);
-        return prevMinutes;
-      });
-    } else {
-      setHours((prevHours) => {
-        onTimeChange(prevHours, value);
-        return prevHours;
-      });
-    }
-
-    // Handle infinite scroll after value is set
-    handleInfiniteScroll(ref, options, extendedOptions);
-
-    // Debounce snap to avoid too frequent updates
-    if (snapTimeoutRef.current) {
-      clearTimeout(snapTimeoutRef.current);
-    }
-    
-    snapTimeoutRef.current = setTimeout(() => {
-      if (ref.current && !isScrollingRef.current) {
-        const currentScroll = ref.current.scrollTop;
-        const relativeScroll = currentScroll - startOffset;
-        
-        // Snap to nearest position in middle copy
-        const targetIndex = Math.round(relativeScroll / itemHeight);
-        let normalizedIndex = targetIndex % options.length;
-        if (normalizedIndex < 0) {
-          normalizedIndex += options.length;
-        }
-        const targetScroll = startOffset + (normalizedIndex * itemHeight);
-        
-        // Only snap if we're not in the middle copy
-        const distanceFromMiddle = Math.abs(currentScroll - targetScroll);
-        if (distanceFromMiddle > itemHeight / 2) {
-          ref.current.scrollTo({
-            top: targetScroll,
-            behavior: 'smooth',
-          });
-        }
-      }
+        onTimeChange(finalHours, finalMinutes);
+      }, 0);
     }, 150);
-  }, [disabled, onTimeChange, handleInfiniteScroll, calculateValueFromScroll]);
-
+  }, [disabled, onTimeChange]);
+  
   return (
-    <div className="flex items-center gap-2">
-      {/* Hours wheel */}
+    <div className="flex items-center justify-center gap-4">
+      {/* Hours picker */}
       <div className="relative">
+        <div className="absolute inset-0 flex items-center pointer-events-none z-10">
+          <div className="w-full h-12 border-t-2 border-b-2 border-primary-500 rounded"></div>
+        </div>
         <div
           ref={hoursRef}
-          onScroll={() => handleScroll(hoursRef, hourOptions, extendedHourOptions, setHours, 'hours')}
-          className={`
-            w-20 h-48 overflow-y-scroll snap-y snap-mandatory
-            scrollbar-hide
-            ${disabled ? 'opacity-50' : ''}
-          `}
-          style={{
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none',
-          }}
+          className="w-20 h-60 overflow-y-scroll hide-scrollbar snap-y snap-mandatory"
+          onScroll={() => handleScroll('hours')}
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
-          {/* Extended options (3 copies above + original + 3 copies below) */}
-          {extendedHourOptions.map((hour, index) => (
-            <div
-              key={`hour-${index}`}
-              className="h-12 flex items-center justify-center snap-center"
-            >
-              <span className="text-3xl font-bold text-primary-700">
-                {hour}
-              </span>
-            </div>
-          ))}
-        </div>
-        
-        {/* Selection indicator */}
-        <div className="absolute top-1/2 left-0 right-0 -translate-y-1/2 pointer-events-none">
-          <div className="h-12 border-t-2 border-b-2 border-primary-500 rounded" />
+          <div className="flex flex-col">
+            {extendedHourOptions.map((hour, index) => (
+              <div
+                key={`hour-${index}`}
+                className="h-12 flex items-center justify-center snap-start"
+              >
+                <span className="text-3xl font-bold text-primary-700">
+                  {hour}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
-
+      
       {/* Separator */}
       <span className="text-3xl font-bold text-primary-500">:</span>
-
-      {/* Minutes wheel */}
+      
+      {/* Minutes picker */}
       <div className="relative">
+        <div className="absolute inset-0 flex items-center pointer-events-none z-10">
+          <div className="w-full h-12 border-t-2 border-b-2 border-primary-500 rounded"></div>
+        </div>
         <div
           ref={minutesRef}
-          onScroll={() => handleScroll(minutesRef, minuteOptions, extendedMinuteOptions, setMinutes, 'minutes')}
-          className={`
-            w-24 h-48 overflow-y-scroll snap-y snap-mandatory
-            scrollbar-hide
-            ${disabled ? 'opacity-50' : ''}
-          `}
-          style={{
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none',
-          }}
+          className="w-20 h-60 overflow-y-scroll hide-scrollbar snap-y snap-mandatory"
+          onScroll={() => handleScroll('minutes')}
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
-          {/* Extended options (3 copies above + original + 3 copies below) */}
-          {extendedMinuteOptions.map((minute, index) => (
-            <div
-              key={`minute-${index}`}
-              className="h-12 flex items-center justify-center snap-center"
-            >
-              <span className="text-3xl font-bold text-primary-700">
-                {minute.toString().padStart(2, '0')}
-              </span>
-            </div>
-          ))}
-        </div>
-        
-        {/* Selection indicator */}
-        <div className="absolute top-1/2 left-0 right-0 -translate-y-1/2 pointer-events-none">
-          <div className="h-12 border-t-2 border-b-2 border-primary-500 rounded" />
+          <div className="flex flex-col">
+            {extendedMinuteOptions.map((minute, index) => (
+              <div
+                key={`minute-${index}`}
+                className="h-12 flex items-center justify-center snap-start"
+              >
+                <span className="text-3xl font-bold text-primary-700">
+                  {String(minute).padStart(2, '0')}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

@@ -30,7 +30,7 @@ src/
 ├── components/          # React components
 │   ├── AnalogClock.tsx     # SVG analog clock (Level 4)
 │   ├── ClockGame.tsx       # Clock time trainer game (Level 4)
-│   ├── TimePicker.tsx      # iOS-style time picker wheels (Level 4)
+│   ├── TimePicker.tsx      # iOS-style time picker wheels with infinite scroll (Level 4)
 │   ├── PyramidView.tsx     # Pyramid grid renderer (Levels 1-3)
 │   ├── TokenBank.tsx       # Draggable number tokens
 │   ├── DragOverlay.tsx     # Touch/mouse drag handling

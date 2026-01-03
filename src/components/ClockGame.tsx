@@ -253,6 +253,7 @@ const ClockGame: React.FC<ClockGameProps> = ({
             minutes={selectedMinutes}
             onTimeChange={handleTimeChange}
             disabled={showCorrect || showWrong}
+            key={`picker-${puzzle.hours}-${puzzle.minutes}`}
           />
           <div className="text-xl font-bold text-primary-700 mt-2">
             {formatTime(selectedHours, selectedMinutes)}
