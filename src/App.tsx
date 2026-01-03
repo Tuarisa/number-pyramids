@@ -534,9 +534,10 @@ const App: React.FC = () => {
     // Check if puzzle is solved after hint
     const remainingEmpty = countEmptyCircles(updatedPuzzle.pyramid);
     if (remainingEmpty === 0) {
+      // Longer delay so user can see what number was placed
       setTimeout(() => {
         handlePuzzleSolved(updatedPuzzle);
-      }, 600);
+      }, 1500);
     }
   }, [puzzle, showToast, handlePuzzleSolved]);
 
